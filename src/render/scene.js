@@ -11,6 +11,7 @@ import * as Desk from './layers/desk.js';
 import * as Tower from './layers/tower.js';
 import * as Monitor from './layers/monitor.js';
 import * as Peripherals from './layers/peripherals.js';
+import * as Lighting from './lighting.js';
 import * as FX from './fx.js';
 
 /* ---- координаты предметов на сцене (не баланс — только композиция) ---- */
@@ -103,6 +104,26 @@ export function toScene(clientX, clientY){
   };
 }
 
+/* Куда прилетает коробка курьера при покупке и что «выпрыгивает» после.
+   Для железа это корпус: процессор и блок питания живут внутри него. */
+export function anchor(id){
+  const L = LAYOUT;
+  switch(id){
+    case 'monitor':    return { x: L.monitor.cx, y: L.monitor.base - 90 };
+    case 'keyboard':   return { x: L.keyboard.cx, y: L.keyboard.y + L.keyboard.h / 2 };
+    case 'mouse':      return { x: L.mouse.cx, y: L.mouse.y };
+    case 'headphones': return { x: L.headphones.cx, y: L.headphones.y - 44 };
+    case 'furniture':  return { x: L.desk.x0 + (L.desk.x1 - L.desk.x0) / 2, y: L.desk.top - 10 };
+    case 'ac':         return { x: L.ac.x + L.ac.w / 2, y: L.ac.y + L.ac.h };
+    case 'decor':      return { x: L.figurines.x + 30, y: L.figurines.y - 14 };
+    case 'rgb':        return { x: L.lamp.x + 40, y: L.lamp.y - 90 };
+    default:           return { x: L.tower.x + L.tower.w / 2, y: L.tower.y + L.tower.h / 2 };
+  }
+}
+
+/* Подстройка качества под реальное время кадра (см. lighting.js). */
+export function tuneQuality(frameMs){ Lighting.tune(frameMs); }
+
 /* Прямоугольник корпуса — нужен вводу для попаданий по пыли. */
 export function towerRect(){ return LAYOUT.tower; }
 
@@ -123,7 +144,19 @@ export function draw(state, time, dt){
     glow: (x, y, r, c, a) => glow(ctx, x, y, r, c, a),
     hue,
     vs:   id => visual(state.levels[id] || 0),
-    lvl:  id => state.levels[id] || 0
+    lvl:  id => state.levels[id] || 0,
+    /* Обёртка «выпрыгивания» предмета после доставки: масштаб 1.25 -> 1.0
+       вокруг точки (ax, ay). ids — одна категория или несколько. */
+    withPop(ids, ax, ay, fn){
+      const k = FX.popScale(ids);
+      if(k === 1){ fn(); return; }
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.scale(k, k);
+      ctx.translate(-ax, -ay);
+      fn();
+      ctx.restore();
+    }
   };
 
   /* Порядок = глубина сцены, от дальнего к ближнему. Столешница идёт
@@ -136,9 +169,28 @@ export function draw(state, time, dt){
   Tower.draw(g);               // системник и всё, что внутри
   Peripherals.draw(g);         // клавиатура, мышь, наушники, лампа
   Desk.drawFront(g);           // переднее ребро стола и ножки — поверх периферии
+  Lighting.drawMonitorLight(g);// свет от монитора на стол и стену
   Room.drawHeat(g);            // волны жара и всполохи перегрева
   FX.draw(g);                  // частицы, числа, индикатор серии
   Room.drawFront(g);           // спинка кресла, растение, виньетка
 
   ctx.restore();
+
+  /* Постобработка идёт в экранных координатах, поверх готового кадра:
+     bloom одним проходом, температура сцены, ночь, зерно. */
+  Lighting.toneFromState(state, state.levels.monitor || 0);
+  Lighting.sampleMonitor(canvas, deviceRect(Monitor.screenRect(g)));
+  Lighting.post(ctx, canvas, state, view);
+}
+
+/* Прямоугольник сцены -> пиксели холста, с обрезкой по его границам. */
+function deviceRect(r){
+  const k = view.scale * view.dpr;
+  const x = (r.x * view.scale + view.ox) * view.dpr;
+  const y = (r.y * view.scale + view.oy) * view.dpr;
+  const x0 = Math.max(0, Math.min(canvas.width, x));
+  const y0 = Math.max(0, Math.min(canvas.height, y));
+  const x1 = Math.max(0, Math.min(canvas.width, x + r.w * k));
+  const y1 = Math.max(0, Math.min(canvas.height, y + r.h * k));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }

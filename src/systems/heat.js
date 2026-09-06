@@ -26,7 +26,7 @@ function applyThrottle(state){
 
 export function update(state, dt){
   const gen = heatGeneration(state.levels) * heatScale(state);
-  const cool = coolRate(state.levels, state.dust);
+  const cool = coolRate(state.levels, state.dust, state);
   state.heat = clamp(state.heat + (gen - cool) * dt, HEAT.min, HEAT.max);
   applyThrottle(state);
 

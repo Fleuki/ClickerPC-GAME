@@ -10,6 +10,9 @@ const EDGE = ['#3f3326', '#352e24', '#232735', '#1d2438'];
 /* Столешница: трапеция в лёгкой перспективе. Всё, что «лежит на столе»,
    рисуется после неё. */
 export function drawSurface(g){
+  g.withPop('furniture', (g.L.desk.x0 + g.L.desk.x1) / 2, g.L.floorY, () => surface(g));
+}
+function surface(g){
   const { ctx, L } = g;
   const F = g.vs('furniture');
   const d = L.desk;
@@ -39,6 +42,9 @@ export function drawSurface(g){
 
 /* Передний торец и ножки: перекрывают низ клавиатуры и мыши. */
 export function drawFront(g){
+  g.withPop('furniture', (g.L.desk.x0 + g.L.desk.x1) / 2, g.L.floorY, () => front(g));
+}
+function front(g){
   const { ctx, L } = g;
   const F = g.vs('furniture');
   const d = L.desk;

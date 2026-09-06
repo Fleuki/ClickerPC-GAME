@@ -10,7 +10,14 @@ function caseTier(g){
   return Math.max(g.vs('cpu'), g.vs('gpu'), g.vs('psu'));
 }
 
+const INSIDE = ['cpu', 'gpu', 'ram', 'ssd', 'psu', 'cooler'];
+
 export function draw(g){
+  const T = g.L.tower;
+  g.withPop(INSIDE, T.x + T.w / 2, T.y + T.h, () => drawCase(g));
+}
+
+function drawCase(g){
   const { ctx, state, L, t } = g;
   const T = L.tower;
   const C = caseTier(g);

@@ -22,6 +22,7 @@ export function createState(){
     reputation: 0,          // фаза 3
     playTime: 0,
     seenIntro: false,
+    muted: false,
     lang: null,             // выбранный игроком язык; null — берём у платформы
     /* транзиентное, не сохраняется */
     cleaning: null,
@@ -46,6 +47,7 @@ export function serialize(state){
     reputation: state.reputation,
     playTime: state.playTime,
     seenIntro: state.seenIntro,
+    muted: state.muted,
     lang: state.lang,
     savedAt: Date.now()
   };
@@ -130,6 +132,7 @@ export function load(state, raw){
   state.reputation = num(d.reputation, 0, 0, Number.MAX_SAFE_INTEGER);
   state.playTime   = num(d.playTime, 0, 0, Number.MAX_SAFE_INTEGER);
   state.seenIntro  = !!d.seenIntro;
+  state.muted      = !!d.muted;
   state.lang       = typeof d.lang === 'string' ? d.lang : null;
 
   state.cleaning = null;
@@ -139,7 +142,8 @@ export function load(state, raw){
 
 export function reset(state){
   const fresh = createState();
-  fresh.lang = state.lang;          // язык — настройка игрока, не прогресс
+  fresh.lang = state.lang;          // язык и звук — настройки игрока, не прогресс
+  fresh.muted = state.muted;
   Object.assign(state, fresh);
   state.levels = fresh.levels;
   return state;

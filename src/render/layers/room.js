@@ -29,8 +29,8 @@ export function drawBack(g){
   ctx.fillRect(view.x0, L.floorY, view.x1 - view.x0, 2);
 
   if(R >= 2) drawWindow(g);
-  drawWallDecor(g);
-  drawAc(g);
+  g.withPop('decor', L.poster.x + L.poster.w / 2, L.poster.y + L.poster.h, () => drawWallDecor(g));
+  g.withPop('ac', L.ac.x + L.ac.w / 2, L.ac.y + L.ac.h, () => drawAc(g));
   drawLighting(g);
 }
 
@@ -198,7 +198,7 @@ export function drawHeat(g){
 export function drawFront(g){
   const { ctx, L, view } = g;
   drawPlant(g);
-  drawChair(g);
+  g.withPop('furniture', L.chair.cx, L.floorY, () => drawChair(g));
   /* Кот появляется с 3 уровня декора (§5) и спит на спинке кресла.
      В фазе 1 это только украшение; механика кота — фаза 3. */
   if(g.lvl('decor') >= 3) drawCat(g);

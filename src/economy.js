@@ -4,7 +4,7 @@
 ===================================================================== */
 
 import {
-  CATEGORIES, MAX_LEVEL, ECONOMY, HEAT, DUST, COMBO
+  CATEGORIES, MAX_LEVEL, ECONOMY, HEAT, DUST, COMBO, DAYNIGHT
 } from './config.js';
 
 const BY_ID = new Map(CATEGORIES.map(c => [c.id, c]));
@@ -128,6 +128,23 @@ export function critChance(levels){
   return value(levels, 'mouse', 'critChance');
 }
 
+/* ---- день и ночь (§7) -----------------------------------------------
+   Возвращает 0..1: 0 — глубокая ночь, 1 — полдень. Плавно, без ступенек,
+   чтобы доход и охлаждение не прыгали на границе.
+--------------------------------------------------------------------- */
+export function daylight(state){
+  const phase = ((state.playTime || 0) % DAYNIGHT.cycle) / DAYNIGHT.cycle;
+  return 0.5 - 0.5 * Math.cos(phase * Math.PI * 2);
+}
+/* Множитель дохода: ночью выше. */
+export function dayIncomeMult(state){
+  return DAYNIGHT.nightIncome + (1 - DAYNIGHT.nightIncome) * daylight(state);
+}
+/* Множитель охлаждения: днём хуже. */
+export function dayCoolMult(state){
+  return 1 + (DAYNIGHT.dayCooling - 1) * daylight(state);
+}
+
 /* ---- доход ---------------------------------------------------------- */
 
 /* Цена одного ручного клика без крита. */
@@ -137,7 +154,8 @@ export function clickValue(state){
        * globalMult(state.levels, state.reputation)
        * heatMult(state.heat, state.throttling)
        * comboMult(state.combo)
-       * boostMult(state);
+       * boostMult(state)
+       * dayIncomeMult(state);
 }
 
 /* Цена одного автоклика: доля от цены клика, без крита. */
@@ -157,6 +175,7 @@ export function passiveIncome(state){
        * globalMult(state.levels, state.reputation)
        * heatMult(state.heat, state.throttling)
        * boostMult(state)
+       * dayIncomeMult(state)
        * (state.throttling ? HEAT.throttlePassive : 1);
 }
 
@@ -173,9 +192,12 @@ export function heatGeneration(levels){
   return g;
 }
 
-export function coolRate(levels, dust){
+/* Охлаждение зависит от пыли и от времени суток.
+   state передаётся отдельно, потому что симулятор зовёт функцию и без него. */
+export function coolRate(levels, dust, state){
   const raw = value(levels, 'cooler', 'cooling') + value(levels, 'ac', 'cooling');
-  return raw * (1 - DUST.coolPenalty * clamp(dust, 0, DUST.max));
+  const day = state ? dayCoolMult(state) : 1;
+  return raw * (1 - DUST.coolPenalty * clamp(dust, 0, DUST.max)) * day;
 }
 
 /* ---- пыль ------------------------------------------------------------ */

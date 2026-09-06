@@ -54,6 +54,8 @@ const STRINGS = {
     'menu.confirm':      'Начать заново',
     'menu.close':        'Закрыть',
     'menu.lang':         'Язык',
+    'menu.soundOn':      'Звук: вкл',
+    'menu.soundOff':     'Звук: выкл',
 
     'stats.title':       'Статистика',
     'stats.clicks':      'Кликов',
@@ -165,6 +167,8 @@ const STRINGS = {
     'menu.confirm':      'Start over',
     'menu.close':        'Close',
     'menu.lang':         'Language',
+    'menu.soundOn':      'Sound: on',
+    'menu.soundOff':     'Sound: off',
 
     'stats.title':       'Stats',
     'stats.clicks':      'Clicks',

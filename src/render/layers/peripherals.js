@@ -1,15 +1,18 @@
 /* Клавиатура, мышь, наушники, лампа и мелочь на столе. */
 
 export function draw(g){
-  drawKeyboard(g);
-  drawMouse(g);
-  drawHeadphones(g);
-  drawLamp(g);
+  const L = g.L;
+  g.withPop('keyboard',   L.keyboard.cx, L.keyboard.y + L.keyboard.h, () => drawKeyboard(g));
+  g.withPop('mouse',      L.mouse.cx, L.mouse.y + 13, () => drawMouse(g));
+  g.withPop('headphones', L.headphones.cx, L.headphones.y, () => drawHeadphones(g));
+  g.withPop('rgb',        L.lamp.x, L.lamp.y, () => drawLamp(g));
 }
 
 /* ---- декор на столе рисуется до корпуса ------------------------------ */
 export function drawDeskDecor(g){
-  if(g.vs('decor') >= 1) drawFigurines(g);
+  if(g.vs('decor') < 1) return;
+  const L = g.L;
+  g.withPop('decor', L.figurines.x, L.figurines.y, () => drawFigurines(g));
 }
 
 /* ---- клавиатура ------------------------------------------------------ */

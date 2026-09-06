@@ -8,7 +8,22 @@ import { HEAT } from '../../config.js';
 const SW = [208, 250, 322, 300];
 const SH = [156, 142, 152, 168];
 
+/* Прямоугольник светящейся части экрана в координатах сцены.
+   Освещение усредняет по нему цвет, чтобы свет от монитора шёл «по кадру». */
+export function screenRect(g){
+  const M = g.vs('monitor');
+  const cx = g.L.monitor.cx, base = g.L.monitor.base;
+  const w = SW[M], h = SH[M];
+  if(M === 0) return { x: cx - w / 2 + 22, y: base - 26 - h + 18, w: w - 44, h: h - 48 };
+  const bez = M === 1 ? 8 : 4;
+  return { x: cx - w / 2 + bez, y: base - 26 - h + bez, w: w - bez * 2, h: h - bez * 2 };
+}
+
 export function draw(g){
+  g.withPop('monitor', g.L.monitor.cx, g.L.monitor.base, () => drawAll(g));
+}
+
+function drawAll(g){
   const { ctx, L, t: time } = g;
   const M = g.vs('monitor');
   const cx = L.monitor.cx, base = L.monitor.base;

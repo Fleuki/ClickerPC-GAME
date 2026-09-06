@@ -15,6 +15,7 @@ import * as DustSys from './systems/dust.js';
 import * as ComboSys from './systems/combo.js';
 import { setLocale, locale } from './i18n.js';
 import { sdk } from './platform/sdk.js';
+import * as Sound from './platform/sound.js';
 
 /* ---------------------------------------------------------------------
    ЛОГИКА (общая с симулятором)
@@ -97,6 +98,7 @@ async function boot(){
   await sdk.init();
   const saved = await sdk.storage.load(SAVE.key);
   if(saved) State.load(state, saved);
+  Sound.setMuted(state.muted);
   setLocale(state.lang || sdk.language());
   document.documentElement.lang = locale();
 
@@ -104,16 +106,19 @@ async function boot(){
   Scene.init(canvas);
 
   Hud.init(document.getElementById('hud'), {
-    onBoost: () => { if(HeatSys.startBoost(state)) FX.shake(4); },
-    onClean: () => DustSys.start(state)
+    onBoost: () => { if(HeatSys.startBoost(state)){ FX.shake(4); Sound.play('reward'); } },
+    onClean: () => { if(DustSys.start(state)) Sound.play('clean'); }
   });
 
   Shop.init(document.getElementById('tabs'), document.getElementById('shop'), {
     onBuy: id => {
       if(buy(state, id)){
-        FX.purchaseFlash();
+        FX.deliver(id, Scene.anchor(id));
+        Sound.play('buy');
         Shop.update(state);
         save();
+      }else{
+        Sound.play('denied');
       }
     },
     onStats: () => Modals.stats(state),
@@ -124,6 +129,11 @@ async function boot(){
       save();
     })
   });
+
+  Modals.setMuteHandler(() => {
+    state.muted = Sound.setMuted(!state.muted);
+    save();
+  }, () => state.muted);
 
   Modals.setLanguageHandler(code => {
     state.lang = setLocale(code);
@@ -142,6 +152,7 @@ async function boot(){
   sdk.ready();
 
   let last = performance.now(), acc = 0, uiTick = 0;
+  let wasThrottling = state.throttling;
   const drawTimes = [];
 
   function frame(now){
@@ -156,11 +167,17 @@ async function boot(){
       acc -= LOOP.fixedStep;
       spawnAutoFx(out, FX, Scene);
     }
+    /* звук на переходах троттлинга — по факту смены состояния, не каждый кадр */
+    if(state.throttling !== wasThrottling){
+      Sound.play(state.throttling ? 'overheat' : 'cooled');
+      wasThrottling = state.throttling;
+    }
     FX.update(dt);
 
     const t0 = performance.now();
     Scene.draw(state, now / 1000, dt);
     const t1 = performance.now();
+    Scene.tuneQuality(t1 - t0);
     if(drawTimes.length >= LOOP.perfWindow) drawTimes.shift();
     drawTimes.push(t1 - t0);
 
@@ -189,13 +206,18 @@ async function boot(){
       };
     },
     save,
-    scene: Scene
+    scene: Scene,
+    lighting: await import('./render/lighting.js'),
+    config: await import('./config.js'),
+    sound: Sound,
+    perfReset(){ drawTimes.length = 0; }
   };
 
   /* ---- ввод ---- */
   function bindInput(canvas, Scene, FX, DustSys){
     canvas.addEventListener('pointerdown', e => {
       e.preventDefault();
+      Sound.unlock();                 // звук можно включать только по жесту
       const p = Scene.toScene(e.clientX, e.clientY);
 
       /* сначала пробуем протереть пыль */
@@ -205,20 +227,24 @@ async function boot(){
         if(DustSys.tap(state, nx, ny) >= 0){
           FX.dustPuff(p.x, p.y);
           FX.shake(3);
+          Sound.play('clean', { spread: 0.2 });
           return;
         }
       }
       const r = applyManualClick(state);
       FX.pop(p.x, p.y, r.value, r.crit);
       FX.shake(r.crit ? 6 : 2.5);
+      r.crit ? Sound.crit() : Sound.click();
     });
 
     document.addEventListener('keydown', e => {
       if(e.code !== 'Space') return;
       e.preventDefault();
+      Sound.unlock();
       const r = applyManualClick(state);
       FX.pop(Scene.LAYOUT.monitor.cx, Scene.LAYOUT.desk.top - 60, r.value, r.crit);
       FX.shake(r.crit ? 6 : 2.5);
+      r.crit ? Sound.crit() : Sound.click();
     });
 
     /* страница не скроллится; прокрутка разрешена только внутри магазина */

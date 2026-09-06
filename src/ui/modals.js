@@ -49,13 +49,20 @@ export function stats(state){
   row(list, t('stats.global'),  '×' + fmtMult(Economy.globalMult(state.levels, state.reputation)));
   row(list, t('stats.crit'),    pct(Economy.critChance(state.levels)) + '%');
   row(list, t('stats.auto'),    fmtMult(Economy.autoCps(state)));
-  row(list, t('stats.cooling'), fmtMult(Economy.coolRate(state.levels, state.dust)) + '°');
+  row(list, t('stats.cooling'), fmtMult(Economy.coolRate(state.levels, state.dust, state)) + '°');
   row(list, t('stats.offline'), t('stats.offlineVal', {
     p: pct(Economy.offlineShare(state.levels)),
     h: Economy.offlineHours(state.levels)
   }));
 
   const btns = make('div', 'btns', m);
+  const sound = make('button', null, btns);
+  const soundLabel = () => t(onMuteQuery && onMuteQuery() ? 'menu.soundOff' : 'menu.soundOn');
+  sound.textContent = soundLabel();
+  sound.addEventListener('click', () => {
+    if(onMute) onMute();
+    sound.textContent = soundLabel();
+  });
   const lang = make('button', null, btns);
   lang.textContent = t('menu.lang') + ': ' + locale().toUpperCase();
   lang.addEventListener('click', () => {
@@ -83,3 +90,6 @@ export function confirmReset(onConfirm){
 
 let onLanguage = null;
 export function setLanguageHandler(fn){ onLanguage = fn; }
+
+let onMute = null, onMuteQuery = null;
+export function setMuteHandler(fn, query){ onMute = fn; onMuteQuery = query; }
