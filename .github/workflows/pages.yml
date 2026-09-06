@@ -1,0 +1,71 @@
+# Сборка и публикация игры на GitHub Pages.
+#
+# Источник Pages должен стоять в режиме «GitHub Actions»
+# (Settings -> Pages -> Source). Шаг configure-pages ниже пытается включить
+# этот режим сам; если у токена не хватит прав, переключить придётся руками —
+# один раз.
+
+name: Pages
+
+on:
+  push:
+    branches:
+      - claude/new-session-5oikq5
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Параллельные деплои не нужны: важен только последний.
+# in_progress не отменяем, чтобы не ронять уже начавшуюся публикацию.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Дешёвая страховка: не публиковать заведомо сломанную игру.
+      - name: Проверить синтаксис модулей
+        run: |
+          set -e
+          find src tools -name '*.js' -print0 | xargs -0 -n1 node --check
+          echo "Все модули разбираются без ошибок."
+
+      # Балансу положено сходиться с целями §9 CLAUDE.md.
+      - name: Прогнать симулятор баланса
+        run: node tools/sim.js --minutes=40 --rates=3 | tail -20
+
+      - name: Собрать статику
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp .nojekyll _site/
+          cp -r src _site/
+          # прототип фазы 0 — рядом, чтобы можно было сравнить
+          cp setup-clicker-prototype.html _site/
+          du -sh _site
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
