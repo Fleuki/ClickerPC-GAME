@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Сетап — прототип кликера</title>
+<style>
+  :root{
+    --bg:#0e0f14;
+    --panel:#171a22;
+    --panel-2:#1e222c;
+    --line:#2a2f3c;
+    --ink:#e8ecf5;
+    --ink-dim:#8a92a6;
+    --cold:#4aa3ff;
+    --warm:#3ddc8a;
+    --hot:#ff9f3d;
+    --burn:#ff4d4d;
+    --coin:#ffd76a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overscroll-behavior:none;touch-action:manipulation;
+    display:flex;justify-content:center;
+  }
+  .app{width:100%;max-width:520px;display:flex;flex-direction:column;min-height:100dvh}
+
+  canvas{width:100%;aspect-ratio:8/5;display:block;background:#0a0b0f;cursor:pointer}
+
+  .bar{padding:10px 12px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .money{display:flex;align-items:baseline;gap:8px}
+  .money b{font-size:30px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .money span{color:var(--ink-dim);font-size:13px}
+  .rates{display:flex;gap:14px;color:var(--ink-dim);font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .rates i{font-style:normal;color:var(--ink)}
+
+  .heat{margin-top:9px;display:flex;align-items:center;gap:9px}
+  .track{position:relative;flex:1;height:14px;border-radius:7px;background:#11141b;overflow:hidden;border:1px solid var(--line)}
+  .zone{position:absolute;top:0;bottom:0;left:35%;width:50%;background:rgba(61,220,138,.13);border-left:1px solid rgba(61,220,138,.4);border-right:1px solid rgba(255,159,61,.4)}
+  .fill{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--cold);transition:background .2s}
+  .heat b{font-size:13px;width:44px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-dim)}
+  .turbo{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+    border-radius:9px;padding:8px 12px;font-size:14px;font-weight:600;min-width:104px}
+  .turbo:disabled{opacity:.4}
+  .turbo.on{background:#ff9f3d;color:#241300;border-color:#ff9f3d}
+
+  .note{padding:6px 12px;font-size:13px;color:var(--hot);background:rgba(255,159,61,.08);border-bottom:1px solid var(--line);display:none}
+  .note.show{display:block}
+  .note.bad{color:var(--burn);background:rgba(255,77,77,.1)}
+
+  .shop{flex:1;overflow-y:auto;padding:8px 8px 20px;display:flex;flex-direction:column;gap:6px}
+  .row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 11px;color:var(--ink);font:inherit}
+  .row:disabled{opacity:.45}
+  .row.buy{border-color:#3d6b52;background:linear-gradient(180deg,#1b2a22,#171a22)}
+  .ic{font-size:22px;width:26px;text-align:center;filter:saturate(.9)}
+  .txt{flex:1;min-width:0}
+  .txt b{display:block;font-size:15px;font-weight:600}
+  .txt i{display:block;font-style:normal;font-size:12.5px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pips{display:flex;gap:3px;margin-top:5px}
+  .pips s{width:15px;height:3px;border-radius:2px;background:#2c3140;text-decoration:none}
+  .pips s.on{background:var(--warm)}
+  .cost{font-size:14px;font-weight:700;color:var(--coin);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cost.max{color:var(--ink-dim);font-weight:600}
+  .foot{display:flex;justify-content:space-between;align-items:center;color:var(--ink-dim);font-size:12px;padding:4px 4px 0}
+  .foot button{background:none;border:none;color:var(--ink-dim);font:inherit;text-decoration:underline;padding:4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <canvas id="c"></canvas>
+
+  <div class="bar">
+    <div class="money"><b id="money">0</b><span>₽</span></div>
+    <div class="rates">
+      <span>за клик <i id="perclick">1</i></span>
+      <span>в секунду <i id="persec">0</i></span>
+    </div>
+    <div class="heat">
+      <div class="track"><div class="zone"></div><div class="fill" id="heatfill"></div></div>
+      <b id="heatnum">0°</b>
+      <button class="turbo" id="turbo" disabled>Разгон</button>
+    </div>
+  </div>
+
+  <div class="note" id="note"></div>
+
+  <div class="shop" id="shop"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------
+   СЕТАП — прототип кликера (фаза 0)
+   Ядро: клик = деньги. Железо греется. Тёплый ПК работает быстрее,
+   перегретый — троттлит. Апгрейды видно на сцене.
+----------------------------------------------------------------*/
+
+// --- баланс -------------------------------------------------------
+const MOUSE = [1, 4, 15, 60, 240];        // ₽ за клик
+const KB    = [0, .8, 2.5, 7, 18];        // автокликов/сек
+const PCI   = [0, 2, 12, 70, 400];        // ₽/сек пассивно
+const CRIT  = [0, .06, .12, .20, .32];    // шанс крита (x4)
+const COOL  = [12, 22, 38, 60, 95];       // °/сек охлаждение
+const ROOM  = [1, 1.3, 1.7, 2.3, 3.2];    // общий множитель
+const PCHEAT= [0, 6, 14, 26, 42];         // °/сек от пассивной работы
+const HEAT_CLICK = 5;                      // ° за клик
+const HEAT_AUTO  = 1;                      // ° за автоклик
+const CRIT_X = 4;
+
+const CATS = [
+  {id:'mouse', ic:'🖱️', name:'Мышь',
+   tiers:['Офисная','Игровая','Беспроводная','Киберспортивная','Титановая'],
+   cost:[0,30,400,5000,60000],
+   info:l=>`${fmt(MOUSE[l])} ₽ за клик`},
+  {id:'kb', ic:'⌨️', name:'Клавиатура',
+   tiers:['Мембранная','Механика','С макросами','Кастом','Оптическая'],
+   cost:[0,60,700,8000,90000],
+   info:l=>l?`макросы: ${KB[l]} кликов/сек`:'без макросов'},
+  {id:'mon', ic:'🖥️', name:'Монитор',
+   tiers:['ЭЛТ 1024×768','TN 60 Гц','IPS 144 Гц','Ультраширокий','Три экрана'],
+   cost:[0,90,1000,12000,130000],
+   info:l=>l?`критов ${Math.round(CRIT[l]*100)}% ×${CRIT_X}`:'критов нет'},
+  {id:'pc', ic:'🧰', name:'Системник',
+   tiers:['Офисный хлам','Сборка на б/у','Игровой','Топовый','Рендер-станция'],
+   cost:[0,120,1500,18000,200000],
+   info:l=>l?`${fmt(PCI[l])} ₽/сек фоном · +${PCHEAT[l]}°/сек`:'фоновой работы нет'},
+  {id:'cool', ic:'❄️', name:'Охлаждение',
+   tiers:['Стоковый кулер','Башня','Две башни','Водянка','Кастом-контур'],
+   cost:[0,45,600,7000,80000],
+   info:l=>`−${COOL[l]}°/сек`},
+  {id:'room', ic:'🪑', name:'Рабочее место',
+   tiers:['Кухонный стол','Постер и стол','Подсветка','Растение и лампа','Окно в город'],
+   cost:[0,150,2000,25000,300000],
+   info:l=>`комфорт ×${ROOM[l]}`}
+];
+
+// --- состояние ----------------------------------------------------
+const S = {
+  money:0, earned:0, clicks:0,
+  lvl:{mouse:0,kb:0,mon:0,pc:0,cool:0,room:0},
+  heat:0, throttle:false,
+  turbo:0, turboCd:0,
+  autoAcc:0, shake:0, t:0, firstClick:false
+};
+const parts = [];
+
+// --- вспомогательное ---------------------------------------------
+function fmt(n){
+  if(n<1000) return (n<10 && n%1) ? n.toFixed(1) : String(Math.floor(n));
+  const u=['K','M','B','T']; let i=-1;
+  while(n>=1000 && i<u.length-1){ n/=1000; i++; }
+  return (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+u[i];
+}
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,k)=>a+(b-a)*k;
+
+function heatMult(){
+  if(S.throttle) return .35;
+  if(S.heat < 35) return 1;
+  if(S.heat < 85) return 1.5;
+  return 2;
+}
+function turboMult(){ return S.turbo>0 ? 3 : 1; }
+function clickValue(){ return MOUSE[S.lvl.mouse]*ROOM[S.lvl.room]*heatMult()*turboMult(); }
+function passiveRate(){
+  const auto = KB[S.lvl.kb]*clickValue()*.6;
+  const bg   = PCI[S.lvl.pc]*ROOM[S.lvl.room]*heatMult()*turboMult()*(S.throttle?.5:1);
+  return auto+bg;
+}
+
+// --- клик ---------------------------------------------------------
+function doClick(x,y,auto){
+  let v = clickValue();
+  let crit = false;
+  if(!auto && Math.random() < CRIT[S.lvl.mon]){ v*=CRIT_X; crit=true; }
+  if(auto) v*=.6;
+  S.money+=v; S.earned+=v;
+  S.heat += (auto?HEAT_AUTO:HEAT_CLICK)*(S.turbo>0?2.5:1);
+  if(!auto){ S.clicks++; S.firstClick=true; S.shake=crit?5:2; }
+  if(parts.length<44)
+    parts.push({x,y,vy:-38-Math.random()*22,vx:(Math.random()-.5)*26,life:1,txt:'+'+fmt(v),crit});
+}
+
+// --- цикл ---------------------------------------------------------
+let last=performance.now();
+function loop(now){
+  let dt=(now-last)/1000; last=now;
+  if(dt>.1) dt=.1;
+  S.t+=dt;
+
+  // тепло
+  const gen = PCHEAT[S.lvl.pc]*(S.throttle?.5:1)*(S.turbo>0?2.5:1);
+  S.heat += (gen - COOL[S.lvl.cool])*dt;
+  S.heat = clamp(S.heat,0,140);
+  if(!S.throttle && S.heat>=100) S.throttle=true;
+  if(S.throttle && S.heat<55) S.throttle=false;
+
+  // автоклики от клавиатуры (пауза при троттлинге)
+  if(KB[S.lvl.kb]>0 && !S.throttle){
+    S.autoAcc += KB[S.lvl.kb]*dt;
+    while(S.autoAcc>=1){
+      S.autoAcc--;
+      doClick(300+Math.random()*200, 300+Math.random()*60, true);
+    }
+  }
+  // фоновый доход системника
+  if(PCI[S.lvl.pc]>0){
+    const bg=PCI[S.lvl.pc]*ROOM[S.lvl.room]*heatMult()*turboMult()*(S.throttle?.5:1)*dt;
+    S.money+=bg; S.earned+=bg;
+  }
+
+  if(S.turbo>0) S.turbo-=dt; else if(S.turboCd>0) S.turboCd-=dt;
+  S.shake=Math.max(0,S.shake-dt*14);
+
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=48*dt; p.life-=dt*1.1;
+    if(p.life<=0) parts.splice(i,1);
+  }
+
+  draw(dt);
+  ui();
+  requestAnimationFrame(loop);
+}
+
+/* =================================================================
+   ОТРИСОВКА СЦЕНЫ
+   Логический холст 800×500. Всё рисуется кодом, ассетов нет.
+==================================================================*/
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const W=800,H=500,FLOOR=430;
+const DX0=80,DX1=640,DY=330;              // стол
+const TX=668,TY=252,TW=104,TH=178;        // системник
+const MCX=350;                            // центр монитора
+
+function fit(){
+  const r=cv.getBoundingClientRect();
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.round(r.width*dpr);
+  cv.height=Math.round(r.width*dpr*H/W);
+}
+addEventListener('resize',fit);
+
+const WALL=['#23252e','#242733','#232839','#212a3c','#1c2740'];
+const DESK=['#5a4a38','#4d4436','#3a3b46','#33384a','#2c3550'];
+const CHAIR=['#33343c','#3a3b45','#2f3a4a','#33304a','#2a3550'];
+function rgb(t,o){ return `hsl(${(t*55+o)%360} 92% 62%)`; }
+function rr(x,y,w,h,r){
+  ctx.beginPath();
+  r=Math.min(r,w/2,h/2);
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);     ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function glow(x,y,r,color,a){
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,color); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.globalAlpha=a; ctx.fillStyle=g;
+  ctx.fillRect(x-r,y-r,r*2,r*2); ctx.globalAlpha=1;
+}
+
+function draw(dt){
+  const s=cv.width/W;
+  ctx.setTransform(s,0,0,s,0,0);
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  if(S.shake>0) ctx.translate((Math.random()-.5)*S.shake,(Math.random()-.5)*S.shake);
+
+  const t=S.t, R=S.lvl.room;
+
+  // стена и пол
+  const g=ctx.createLinearGradient(0,0,0,FLOOR);
+  g.addColorStop(0,WALL[R]); g.addColorStop(1,'#15161d');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,FLOOR);
+  ctx.fillStyle='#0f1014'; ctx.fillRect(0,FLOOR,W,H-FLOOR);
+  ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(0,FLOOR,W,2);
+
+  if(R>=4) drawWindow(t);
+  if(R>=1) drawPoster();
+  if(R>=2){ // подсветка за столом
+    glow(200,DY-6,190,'rgba(80,120,255,.75)',.5);
+    glow(520,DY-6,190,'rgba(255,60,180,.7)',.45);
+  }
+  if(R>=3) drawPlant(t);
+
+  drawDesk(R);
+  drawTower(t);
+  drawMonitor(t);
+  drawKeyboard(t);
+  drawMouse(t);
+  if(R>=3) drawLamp(t);
+  drawChair(R);
+  drawHeatFX(t);
+  drawParts();
+
+  // виньетка
+  const v=ctx.createRadialGradient(W/2,H/2,180,W/2,H/2,520);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+
+  if(!S.firstClick){
+    ctx.globalAlpha=.55+Math.sin(t*4)*.3;
+    ctx.fillStyle='#e8ecf5'; ctx.font='600 22px system-ui,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Нажимай куда угодно', W/2, 468);
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+function drawDesk(R){
+  ctx.fillStyle=DESK[R];
+  ctx.beginPath();                       // столешница в лёгкой перспективе
+  ctx.moveTo(DX0+16,DY-14); ctx.lineTo(DX1-16,DY-14);
+  ctx.lineTo(DX1,DY); ctx.lineTo(DX0,DY); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.07)';
+  ctx.fillRect(DX0,DY,DX1-DX0,3);
+  ctx.fillStyle=DESK[R]; ctx.fillRect(DX0,DY,DX1-DX0,16);
+  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(DX0,DY+16,DX1-DX0,4);
+  ctx.fillStyle=DESK[R];
+  ctx.fillRect(DX0+14,DY+20,13,FLOOR-DY-20);
+  ctx.fillRect(DX1-27,DY+20,13,FLOOR-DY-20);
+  if(R>=2){ ctx.fillStyle='rgba(120,180,255,.25)'; ctx.fillRect(DX0,DY+18,DX1-DX0,2); }
+}
+
+function drawChair(R){
+  ctx.fillStyle=CHAIR[R];
+  rr(250,392,230,120,26); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.06)'; rr(266,404,198,96,20); ctx.fill();
+  if(R>=2){ ctx.fillStyle=R>=4?'rgba(120,160,255,.5)':'rgba(255,90,140,.45)'; ctx.fillRect(266,404,198,4); }
+}
+
+function drawPoster(){
+  ctx.fillStyle='#171a22'; ctx.fillRect(500,84,104,132);
+  ctx.fillStyle='#2b3245'; ctx.fillRect(506,90,92,120);
+  ctx.fillStyle='#ff5f7e'; ctx.beginPath(); ctx.arc(552,132,26,0,7); ctx.fill();
+  ctx.fillStyle='#4aa3ff'; ctx.fillRect(516,164,72,8);
+  ctx.fillStyle='#3ddc8a'; ctx.fillRect(516,180,48,8);
+}
+
+function drawWindow(t){
+  const x=62,y=70,w=176,h=150;
+  const sky=ctx.createLinearGradient(0,y,0,y+h);
+  sky.addColorStop(0,'#0b1030'); sky.addColorStop(1,'#2a1a44');
+  ctx.fillStyle=sky; ctx.fillRect(x,y,w,h);
+  for(let i=0;i<26;i++){
+    const sx=x+((i*67)%w), sy=y+((i*41)%(h*.5));
+    ctx.globalAlpha=.3+.5*Math.abs(Math.sin(t*1.5+i));
+    ctx.fillStyle='#cfe0ff'; ctx.fillRect(sx,sy,2,2);
+  }
+  ctx.globalAlpha=1;
+  for(let i=0;i<7;i++){                    // силуэты домов
+    const bw=18+((i*13)%16), bh=30+((i*29)%56), bx=x+6+i*24;
+    ctx.fillStyle='#0a0d1c'; ctx.fillRect(bx,y+h-bh,bw,bh);
+    for(let k=0;k<5;k++){
+      if((i*7+k*3)%4) continue;
+      ctx.fillStyle=k%2?'#ffd76a':'#7fd8ff';
+      ctx.fillRect(bx+4+(k%2)*8,y+h-bh+6+k*9,4,5);
+    }
+  }
+  ctx.strokeStyle='#0d1018'; ctx.lineWidth=7; ctx.strokeRect(x,y,w,h);
+  ctx.lineWidth=4; ctx.beginPath();
+  ctx.moveTo(x+w/2,y); ctx.lineTo(x+w/2,y+h);
+  ctx.moveTo(x,y+h/2); ctx.lineTo(x+w,y+h/2); ctx.stroke();
+  glow(x+w/2,y+h/2,150,'rgba(90,120,255,.35)',.5);
+}
+
+function drawPlant(t){
+  const bx=34,by=FLOOR;
+  ctx.fillStyle='#7a4a35'; ctx.beginPath();
+  ctx.moveTo(bx,by-38); ctx.lineTo(bx+46,by-38); ctx.lineTo(bx+38,by); ctx.lineTo(bx+8,by); ctx.fill();
+  ctx.strokeStyle='#2f7d4f'; ctx.lineWidth=5; ctx.lineCap='round';
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2+(i-2)*.42+Math.sin(t*.8+i)*.05;
+    ctx.beginPath(); ctx.moveTo(bx+23,by-38);
+    ctx.quadraticCurveTo(bx+23+Math.cos(a)*30,by-78,bx+23+Math.cos(a)*54,by-108);
+    ctx.stroke();
+  }
+  ctx.lineCap='butt';
+}
+
+function drawLamp(t){
+  ctx.strokeStyle='#3c4252'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.moveTo(596,DY-14); ctx.lineTo(596,DY-86); ctx.lineTo(556,DY-104); ctx.stroke();
+  ctx.fillStyle='#4a5164'; ctx.beginPath();
+  ctx.moveTo(534,DY-100); ctx.lineTo(566,DY-114); ctx.lineTo(576,DY-92); ctx.lineTo(544,DY-78); ctx.fill();
+  glow(552,DY-78,120,'rgba(255,214,140,.55)',.55);
+  ctx.fillStyle='#2e3444'; ctx.beginPath(); ctx.ellipse(596,DY-12,20,6,0,0,7); ctx.fill();
+}
+
+/* --- системник + охлаждение -------------------------------------- */
+function drawTower(t){
+  const P=S.lvl.pc, C=S.lvl.cool;
+  ctx.fillStyle='rgba(0,0,0,.4)';
+  ctx.beginPath(); ctx.ellipse(TX+TW/2,FLOOR+6,TW*.6,10,0,0,7); ctx.fill();
+
+  if(P===0){                                   // бежевый офисный ящик
+    ctx.fillStyle='#c9bfa2'; ctx.fillRect(TX+10,TY+40,TW-20,TH-40);
+    ctx.fillStyle='#b3a98d'; ctx.fillRect(TX+16,TY+52,TW-32,26);
+    ctx.fillStyle='#8d846c';
+    for(let i=0;i<6;i++) ctx.fillRect(TX+18,TY+96+i*7,TW-36,3);
+    ctx.fillStyle='#7ee08a'; ctx.fillRect(TX+18,TY+86,7,4);
+  }else{
+    ctx.fillStyle='#14161d'; rr(TX,TY,TW,TH,7); ctx.fill();
+    ctx.strokeStyle='#262b36'; ctx.lineWidth=2; rr(TX,TY,TW,TH,7); ctx.stroke();
+    if(P>=2){                                  // стеклянная боковина
+      ctx.save(); rr(TX+7,TY+8,TW-14,TH-16,5); ctx.clip();
+      ctx.fillStyle='#0b0d13'; ctx.fillRect(TX,TY,TW,TH);
+      // видеокарта
+      ctx.fillStyle='#1c2130'; ctx.fillRect(TX+40,TY+96,TW-50,26);
+      ctx.fillStyle=P>=3?rgb(t,120):'#4aa3ff'; ctx.fillRect(TX+44,TY+100,TW-58,4);
+      // вентиляторы: количество зависит от охлаждения
+      const n=Math.min(1+C,4);
+      for(let i=0;i<n;i++) fan(TX+26,TY+30+i*38,14,t*(2+C*.8)+i,P>=3?rgb(t,i*70):'#6fe0ff');
+      if(C>=3){                                // контур водянки
+        ctx.strokeStyle='#3ddc8a'; ctx.lineWidth=5;
+        ctx.beginPath(); ctx.moveTo(TX+44,TY+108);
+        ctx.bezierCurveTo(TX+90,TY+80,TX+80,TY+40,TX+50,TY+28); ctx.stroke();
+        ctx.fillStyle='rgba(61,220,138,.5)'; ctx.fillRect(TX+76,TY+40,12,52);
+      }
+      ctx.restore();
+      ctx.strokeStyle='rgba(180,220,255,.18)'; ctx.lineWidth=2;
+      rr(TX+7,TY+8,TW-14,TH-16,5); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,.05)';
+      ctx.beginPath(); ctx.moveTo(TX+14,TY+16); ctx.lineTo(TX+46,TY+16);
+      ctx.lineTo(TX+16,TY+TH-24); ctx.lineTo(TX+10,TY+TH-24); ctx.fill();
+    }else{
+      ctx.fillStyle='#0e1017'; rr(TX+10,TY+12,TW-20,TH-24,5); ctx.fill();
+      fan(TX+TW/2,TY+58,20,t*(2+C),'#6fe0ff');
+      ctx.fillStyle='#232833';
+      for(let i=0;i<7;i++) ctx.fillRect(TX+22,TY+104+i*9,TW-44,4);
+    }
+    ctx.fillStyle=S.throttle?'#ff4d4d':'#3ddc8a';
+    ctx.beginPath(); ctx.arc(TX+TW-16,TY+18,3.5,0,7); ctx.fill();
+    if(P>=2) glow(TX+TW/2,TY+TH/2,110,S.throttle?'rgba(255,60,40,.5)':'rgba(90,170,255,.35)',.5);
+  }
+  if(S.heat>60){                                // красный нагрев корпуса
+    ctx.globalAlpha=clamp((S.heat-60)/60,0,1)*.4;
+    ctx.fillStyle='#ff3a1a'; rr(TX,TY,TW,TH,7); ctx.fill(); ctx.globalAlpha=1;
+  }
+}
+function fan(cx,cy,r,a,color){
+  ctx.fillStyle='#0a0c12'; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill();
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+  ctx.fillStyle='#2a3040';
+  for(let i=0;i<7;i++){
+    ctx.rotate(Math.PI*2/7);
+    ctx.beginPath(); ctx.ellipse(r*.55,0,r*.42,r*.16,0.5,0,7); ctx.fill();
+  }
+  ctx.restore();
+  ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.globalAlpha=.85;
+  ctx.beginPath(); ctx.arc(cx,cy,r-1,0,7); ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle='#161a24'; ctx.beginPath(); ctx.arc(cx,cy,r*.28,0,7); ctx.fill();
+}
+
+/* --- монитор ------------------------------------------------------ */
+function drawMonitor(t){
+  const L=S.lvl.mon;
+  if(L===0){
+    ctx.fillStyle='#3a3a3f'; ctx.fillRect(MCX-58,DY-24,116,24);
+    ctx.fillStyle='#c9bfa2'; rr(MCX-104,DY-176,208,154,10); ctx.fill();
+    ctx.fillStyle='#b0a68a'; rr(MCX-92,DY-166,184,132,8); ctx.fill();
+    screen(MCX-84,DY-158,168,116,0,t);
+    return;
+  }
+  if(L===4){
+    side(MCX-236,DY-146,84,102,t,-1);
+    side(MCX+152,DY-146,84,102,t,1);
+  }
+  const w=[0,222,262,376,300][L], h=[0,140,152,146,164][L];
+  const x=MCX-w/2, y=DY-24-h;
+  ctx.fillStyle='#20242e'; ctx.fillRect(MCX-46,DY-26,92,10);
+  ctx.fillStyle='#2a2f3a'; ctx.fillRect(MCX-9,y+h,18,DY-26-(y+h));
+  const bez=L===1?9:4;
+  ctx.fillStyle='#0d0f15'; rr(x,y,w,h,6); ctx.fill();
+  screen(x+bez,y+bez,w-bez*2,h-bez*2,L,t);
+  if(L>=3) glow(MCX,y+h/2,230,S.throttle?'rgba(255,70,40,.45)':'rgba(90,150,255,.4)',.5);
+}
+function side(x,y,w,h,t,dir){
+  ctx.save();
+  ctx.transform(1,0,dir*.13,1,0,0);
+  ctx.fillStyle='#0d0f15'; rr(x,y,w,h,5); ctx.fill();
+  screen(x+4,y+4,w-8,h-8,3,t+dir);
+  ctx.restore();
+}
+function screen(x,y,w,h,L,t){
+  ctx.save(); rr(x,y,w,h,3); ctx.clip();
+  if(L===0){
+    ctx.fillStyle='#0b1c10'; ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#59e08a'; ctx.font='13px ui-monospace,monospace'; ctx.textAlign='left';
+    ctx.fillText('C:\\> job.exe', x+10, y+22);
+    ctx.fillText('balance:', x+10, y+44);
+    ctx.font='bold 20px ui-monospace,monospace';
+    ctx.fillText(fmt(S.money), x+10, y+70);
+    ctx.font='13px ui-monospace,monospace';
+    ctx.fillText(S.throttle?'!! OVERHEAT !!':(Math.floor(t*2)%2?'_':''), x+10, y+94);
+    ctx.globalAlpha=.13; ctx.fillStyle='#000';
+    for(let i=0;i<h;i+=3) ctx.fillRect(x,y+i,w,1);
+    ctx.globalAlpha=1;
+  }else{
+    const bg=ctx.createLinearGradient(x,y,x+w,y+h);
+    bg.addColorStop(0,'#101a33'); bg.addColorStop(1,'#1d1030');
+    ctx.fillStyle=bg; ctx.fillRect(x,y,w,h);
+    ctx.textAlign='left';
+    ctx.fillStyle='rgba(255,255,255,.55)'; ctx.font='11px system-ui,sans-serif';
+    ctx.fillText('Фоновый рендер', x+10, y+18);
+    ctx.fillStyle='#fff'; ctx.font='bold 22px system-ui,sans-serif';
+    ctx.fillText(fmt(S.money)+' ₽', x+10, y+42);
+    // прогресс-полоса
+    const pw=w-20, p=(t*.45)%1;
+    ctx.fillStyle='rgba(255,255,255,.12)'; rr(x+10,y+52,pw,7,4); ctx.fill();
+    ctx.fillStyle=S.throttle?'#ff4d4d':'#4aa3ff'; rr(x+10,y+52,pw*p,7,4); ctx.fill();
+    // столбики
+    const n=Math.floor(pw/13);
+    for(let i=0;i<n;i++){
+      const v=(Math.sin(t*3+i*.7)*.5+.5)*(h-84)+6;
+      ctx.fillStyle=i>n-4?'#ff7ad4':'rgba(120,200,255,.7)';
+      ctx.fillRect(x+10+i*13,y+h-10-v,8,v);
+    }
+    if(S.throttle){
+      ctx.fillStyle='rgba(255,60,40,'+(.25+Math.sin(t*9)*.2)+')'; ctx.fillRect(x,y,w,h);
+      ctx.fillStyle='#fff'; ctx.font='bold 16px system-ui,sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Перегрев', x+w/2, y+h/2+6);
+    }else if(S.turbo>0){
+      ctx.fillStyle='#ffb43d'; ctx.font='bold 14px system-ui,sans-serif'; ctx.textAlign='right';
+      ctx.fillText('Разгон ×3', x+w-10, y+20);
+    }
+  }
+  ctx.restore();
+  ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.lineWidth=1; rr(x,y,w,h,3); ctx.stroke();
+}
+
+/* --- клавиатура и мышь -------------------------------------------- */
+function drawKeyboard(t){
+  const L=S.lvl.kb, x=MCX-104, y=DY-6, w=208, h=26;
+  ctx.fillStyle='rgba(0,0,0,.35)'; rr(x+4,y+8,w,h,5); ctx.fill();
+  ctx.fillStyle=L===0?'#8f8f96':'#1a1d25'; rr(x,y,w,h,5); ctx.fill();
+  const cols=15, kw=(w-14)/cols;
+  for(let r=0;r<3;r++) for(let i=0;i<cols;i++){
+    const kx=x+7+i*kw, ky=y+5+r*7;
+    if(L===0) ctx.fillStyle='#cfcfd4';
+    else if(L===1) ctx.fillStyle='rgba(200,220,255,.6)';
+    else if(L===2) ctx.fillStyle='rgba(110,200,255,'+(.45+.4*Math.sin(t*3+i*.4))+')';
+    else ctx.fillStyle=rgb(t*(L===4?2.4:1.2),i*17+r*12);
+    ctx.fillRect(kx,ky,kw-2.5,5);
+  }
+  if(L>=2) glow(MCX,y+h/2,140,L>=3?'rgba(255,90,200,.4)':'rgba(90,190,255,.4)',.45);
+  if(L>=4){ ctx.fillStyle='#242833'; rr(x+10,y+h+2,w-20,7,4); ctx.fill(); }
+}
+function drawMouse(t){
+  const L=S.lvl.mouse, cx=520, cy=DY-2;
+  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx+3,cy+8,20,8,0,0,7); ctx.fill();
+  ctx.fillStyle=L===0?'#9a9aa2':'#1c1f28';
+  ctx.beginPath(); ctx.ellipse(cx,cy,18,13,0,0,7); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx,cy-13); ctx.lineTo(cx,cy-2); ctx.stroke();
+  if(L===1){ ctx.fillStyle='#ff4d4d'; ctx.fillRect(cx-3,cy-6,6,3); }
+  if(L>=2){
+    ctx.strokeStyle=rgb(t*(L>=4?2.6:1.3),200); ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(cx,cy,18,13,0,0,7); ctx.stroke();
+    glow(cx,cy,70,'rgba(255,80,200,.45)',.4);
+  }
+  if(L<=1){ // провод
+    ctx.strokeStyle='#5a5f6b'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx,cy-12);
+    ctx.quadraticCurveTo(cx+40,cy-40,TX+8,TY+120); ctx.stroke();
+  }
+  if(L>=3){ ctx.fillStyle='#232936'; rr(cx-24,cy+6,48,7,4); ctx.fill(); }
+}
+
+/* --- тепло и частицы ---------------------------------------------- */
+function drawHeatFX(t){
+  if(S.heat<50) return;
+  const a=clamp((S.heat-50)/60,0,1);
+  ctx.strokeStyle='rgba(255,140,80,'+(a*.5)+')'; ctx.lineWidth=2;
+  for(let i=0;i<4;i++){
+    ctx.beginPath();
+    for(let y=0;y<44;y+=4){
+      const x=TX+22+i*22+Math.sin((y+t*130+i*40)*.09)*5;
+      y===0?ctx.moveTo(x,TY-8-y):ctx.lineTo(x,TY-8-y);
+    }
+    ctx.stroke();
+  }
+  if(S.throttle){
+    ctx.globalAlpha=.10+Math.sin(t*8)*.06;
+    ctx.fillStyle='#ff2a1a'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+  }
+}
+function drawParts(){
+  ctx.textAlign='center';
+  for(const p of parts){
+    ctx.globalAlpha=clamp(p.life,0,1);
+    ctx.fillStyle=p.crit?'#ff7ad4':'#ffd76a';
+    ctx.font=(p.crit?'bold 26px ':'600 18px ')+'system-ui,sans-serif';
+    ctx.fillText(p.txt,p.x,p.y);
+  }
+  ctx.globalAlpha=1;
+}
+
+/* =================================================================
+   ИНТЕРФЕЙС
+==================================================================*/
+const $=id=>document.getElementById(id);
+const shopEl=$('shop'), rows={};
+
+CATS.forEach(c=>{
+  const b=document.createElement('button');
+  b.className='row';
+  b.innerHTML=`<span class="ic">${c.ic}</span>
+    <span class="txt"><b></b><i></i><span class="pips">${'<s></s>'.repeat(4)}</span></span>
+    <span class="cost"></span>`;
+  b.onclick=()=>buy(c.id);
+  shopEl.appendChild(b);
+  rows[c.id]={el:b,name:b.querySelector('b'),info:b.querySelector('i'),
+              cost:b.querySelector('.cost'),pips:[...b.querySelectorAll('s')]};
+});
+const foot=document.createElement('div');
+foot.className='foot';
+foot.innerHTML='<span id="stat"></span><button id="reset">Начать заново</button>';
+shopEl.appendChild(foot);
+$('reset').onclick=()=>{
+  S.money=0;S.earned=0;S.clicks=0;S.heat=0;S.throttle=false;S.turbo=0;S.turboCd=0;S.firstClick=false;
+  for(const k in S.lvl) S.lvl[k]=0;
+  parts.length=0;
+};
+
+function buy(id){
+  const c=CATS.find(x=>x.id===id), l=S.lvl[id];
+  if(l>=4) return;
+  const price=c.cost[l+1];
+  if(S.money<price) return;
+  S.money-=price; S.lvl[id]=l+1;
+  S.shake=6;
+}
+
+let uiAcc=0;
+function ui(){
+  uiAcc++; if(uiAcc%3) return;                 // обновляем ~20 раз/сек
+  $('money').textContent=fmt(S.money);
+  $('perclick').textContent=fmt(clickValue());
+  $('persec').textContent=fmt(passiveRate());
+
+  const h=clamp(S.heat,0,100);
+  const f=$('heatfill');
+  f.style.width=h+'%';
+  f.style.background=S.throttle?'var(--burn)':h<35?'var(--cold)':h<85?'var(--warm)':'var(--hot)';
+  $('heatnum').textContent=Math.round(S.heat)+'°';
+
+  const tb=$('turbo');
+  tb.classList.toggle('on',S.turbo>0);
+  tb.disabled=!(S.lvl.cool>=1 && S.turbo<=0 && S.turboCd<=0);
+  tb.textContent=S.turbo>0?'Разгон '+S.turbo.toFixed(1)+'с'
+    :S.turboCd>0?'Остывает '+Math.ceil(S.turboCd)+'с'
+    :S.lvl.cool>=1?'Разгон ×3':'Нужен кулер';
+
+  const note=$('note');
+  let msg='';
+  if(S.throttle){ msg='Перегрев: доход упал в 3 раза. Дай остыть или возьми охлаждение.'; note.classList.add('bad'); }
+  else if(S.heat>=35 && S.heat<85){ msg='Железо прогрето: доход ×1.5'; note.classList.remove('bad'); }
+  else if(S.heat>=85){ msg='Красная зона: доход ×2, но до перегрева совсем немного'; note.classList.remove('bad'); }
+  note.textContent=msg; note.classList.toggle('show',!!msg);
+
+  for(const c of CATS){
+    const l=S.lvl[c.id], r=rows[c.id], max=l>=4;
+    r.name.textContent=c.name+' · '+c.tiers[l];
+    r.info.textContent=max?c.info(l):c.info(l)+'  →  '+c.tiers[l+1];
+    r.cost.textContent=max?'макс':fmt(c.cost[l+1])+' ₽';
+    r.cost.classList.toggle('max',max);
+    const can=!max && S.money>=c.cost[l+1];
+    r.el.disabled=max||!can;
+    r.el.classList.toggle('buy',can);
+    r.pips.forEach((p,i)=>p.classList.toggle('on',i<l));
+  }
+  $('stat').textContent=`Кликов: ${S.clicks} · Заработано: ${fmt(S.earned)} ₽`;
+}
+
+// --- ввод ---------------------------------------------------------
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  const r=cv.getBoundingClientRect();
+  doClick((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H,false);
+});
+$('turbo').onclick=()=>{
+  if(S.lvl.cool<1||S.turbo>0||S.turboCd>0) return;
+  S.turbo=8; S.turboCd=33;
+};
+document.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); doClick(MCX,300,false); }});
+
+fit();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

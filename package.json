@@ -1,0 +1,7 @@
+{
+  "name": "setup-clicker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Сетап — кликер про сборку компьютерного места. Игра работает без сборки; этот файл нужен только чтобы node запускал tools/sim.js как ES-модули."
+}
