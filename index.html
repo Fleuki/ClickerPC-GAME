@@ -16,6 +16,8 @@
   --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* авторские display: flex перебивают [hidden] из стилей браузера — возвращаем */
+[hidden]{display:none!important}
 html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden}
 body{
   position:fixed;inset:0;
@@ -79,9 +81,14 @@ button{font:inherit;color:inherit}
 /* ---- tabs ---- */
 .tabs{display:flex;gap:5px;padding:8px 8px 0;flex:0 0 auto}
 .tabs button{
-  flex:1;background:none;border:1px solid transparent;border-radius:9px;
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  background:none;border:1px solid transparent;border-radius:9px;
   padding:7px 4px;font-size:13px;font-weight:600;color:var(--dim);min-height:34px}
 .tabs button.on{background:var(--panel-2);border-color:var(--line);color:var(--ink)}
+.tabs button .ar{display:none;font-size:15px;line-height:1;color:var(--dim)}
+/* выбран раздел: осталась одна кнопка, она же возвращает к списку разделов */
+.tabs.focused button{justify-content:flex-start;padding-left:11px}
+.tabs.focused button .ar{display:inline}
 
 /* ---- shop ---- */
 .shop{flex:1 1 auto;min-height:0;overflow-y:auto;touch-action:pan-y;

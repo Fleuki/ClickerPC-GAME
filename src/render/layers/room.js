@@ -199,6 +199,9 @@ export function drawFront(g){
   const { ctx, L, view } = g;
   drawPlant(g);
   drawChair(g);
+  /* Кот появляется с 3 уровня декора (§5) и спит на спинке кресла.
+     В фазе 1 это только украшение; механика кота — фаза 3. */
+  if(g.lvl('decor') >= 3) drawCat(g);
 
   /* виньетка */
   const cx = (view.x0 + view.x1) / 2, cy = (view.y0 + view.y1) / 2;
@@ -233,6 +236,28 @@ function drawChair(g){
     ctx.fillStyle = 'rgba(255,255,255,.07)';
     g.rr(cx - 52, top - 20, 104, 22, 10); ctx.fill();
   }
+}
+
+function drawCat(g){
+  const { ctx, L, t } = g;
+  const x = L.chair.cx + 74, y = L.chair.top + 6;
+  const breathe = Math.sin(t * 1.2) * 1.2;
+
+  ctx.fillStyle = '#3b3a44';
+  ctx.beginPath(); ctx.ellipse(x, y - 14 + breathe, 34, 14, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x - 30, y - 24 + breathe, 13, 0, 7); ctx.fill();
+  ctx.beginPath();                              // уши
+  ctx.moveTo(x - 40, y - 33 + breathe); ctx.lineTo(x - 35, y - 48 + breathe);
+  ctx.lineTo(x - 27, y - 34 + breathe); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 27, y - 34 + breathe); ctx.lineTo(x - 19, y - 46 + breathe);
+  ctx.lineTo(x - 16, y - 31 + breathe); ctx.fill();
+  ctx.strokeStyle = '#3b3a44'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath();                              // хвост
+  ctx.moveTo(x + 32, y - 14);
+  ctx.quadraticCurveTo(x + 54, y - 24 + Math.sin(t * 2) * 7, x + 46, y - 36);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 
 function drawPlant(g){

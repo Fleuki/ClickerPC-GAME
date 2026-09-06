@@ -7,8 +7,12 @@ import * as Economy from '../economy.js';
 const cards = new Map();
 const tabButtons = new Map();
 let activeTab = TABS[0];
+/* Развёрнутый выбор = видны все три кнопки. Как только игрок выбрал раздел,
+   лишние кнопки уходят, остаётся одна — она же кнопка «назад». */
+let expanded = true;
 let handlers = {};
 let footEls = null;
+let tabsRootEl = null;
 
 function make(tag, cls, parent){
   const n = document.createElement(tag);
@@ -48,10 +52,18 @@ export function init(tabsRoot, shopRoot, h){
   cards.clear();
   tabButtons.clear();
 
+  tabsRootEl = tabsRoot;
   for(const tab of TABS){
     const b = make('button', null, tabsRoot);
-    b.addEventListener('click', () => selectTab(tab));
-    tabButtons.set(tab, b);
+    const arrow = make('span', 'ar', b);
+    arrow.textContent = '\u2190';
+    const label = make('span', 'lb', b);
+    b.addEventListener('click', () => {
+      /* по выбранному разделу — возврат к списку разделов */
+      if(!expanded && tab === activeTab) openChooser();
+      else selectTab(tab);
+    });
+    tabButtons.set(tab, { el: b, label });
   }
 
   for(const c of CATEGORIES){
@@ -84,25 +96,42 @@ export function init(tabsRoot, shopRoot, h){
   footEls = { stats, reset };
 
   applyLabels();
-  selectTab(activeTab);
+  render();
 }
 
 /* Подписи, зависящие от языка. */
 export function applyLabels(){
-  for(const tab of TABS) tabButtons.get(tab).textContent = t('tab.' + tab);
+  for(const tab of TABS) tabButtons.get(tab).label.textContent = t('tab.' + tab);
   if(footEls){
     footEls.stats.textContent = t('menu.stats');
     footEls.reset.textContent = t('menu.reset');
   }
 }
 
+/* Выбрать раздел: остальные кнопки прячутся. */
 export function selectTab(tab){
   activeTab = TABS.includes(tab) ? tab : TABS[0];
-  for(const [id, b] of tabButtons) b.classList.toggle('on', id === activeTab);
-  for(const [id, c] of cards) c.card.hidden = c.cat.tab !== activeTab;
+  expanded = false;
+  render();
+}
+
+/* Вернуться к выбору раздела: снова видны все три кнопки. */
+export function openChooser(){
+  expanded = true;
+  render();
+}
+
+function render(){
+  tabsRootEl.classList.toggle('focused', !expanded);
+  for(const [id, b] of tabButtons){
+    b.el.classList.toggle('on', id === activeTab);
+    b.el.hidden = !expanded && id !== activeTab;
+  }
+  for(const [, c] of cards) c.card.hidden = c.cat.tab !== activeTab;
 }
 
 export function currentTab(){ return activeTab; }
+export function isExpanded(){ return expanded; }
 
 /* ---- обновление ------------------------------------------------------- */
 export function update(state){

@@ -9,11 +9,7 @@ export function draw(g){
 
 /* ---- декор на столе рисуется до корпуса ------------------------------ */
 export function drawDeskDecor(g){
-  const D = g.vs('decor');
-  if(D >= 1) drawFigurines(g);
-  /* Кот появляется с 3 уровня декора (§5). В фазе 1 — только украшение,
-     механика кота относится к фазе 3. */
-  if(g.lvl('decor') >= 3) drawCat(g);
+  if(g.vs('decor') >= 1) drawFigurines(g);
 }
 
 /* ---- клавиатура ------------------------------------------------------ */
@@ -79,7 +75,7 @@ function drawMouse(g){
     ctx.strokeStyle = '#5a5f6b'; ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx, cy - 12);
-    ctx.quadraticCurveTo(cx + 60, cy - 46, L.tower.x + 10, L.tower.y + L.tower.h - 30);
+    ctx.quadraticCurveTo(cx + 70, cy - 30, L.tower.x + 8, L.tower.y + L.tower.h - 24);
     ctx.stroke();
   }
   if(M >= 2){                                   // коврик
@@ -130,14 +126,14 @@ function drawLamp(g){
   ctx.beginPath(); ctx.ellipse(x, y, 20, 6, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = '#3c4252'; ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(x, y - 6); ctx.lineTo(x, y - 96); ctx.lineTo(x - 44, y - 116);
+  ctx.moveTo(x, y - 6); ctx.lineTo(x, y - 96); ctx.lineTo(x + 44, y - 116);
   ctx.stroke();
   ctx.fillStyle = '#4a5164';
   ctx.beginPath();
-  ctx.moveTo(x - 66, y - 112); ctx.lineTo(x - 32, y - 126);
-  ctx.lineTo(x - 22, y - 102); ctx.lineTo(x - 56, y - 88);
+  ctx.moveTo(x + 66, y - 112); ctx.lineTo(x + 32, y - 126);
+  ctx.lineTo(x + 22, y - 102); ctx.lineTo(x + 56, y - 88);
   ctx.fill();
-  g.glow(x - 46, y - 88, 140, 'rgba(255,214,140,.55)', 0.5);
+  g.glow(x + 46, y - 88, 140, 'rgba(255,214,140,.55)', 0.5);
 }
 
 /* ---- фигурки и кот ---------------------------------------------------- */
@@ -154,28 +150,3 @@ function drawFigurines(g){
   }
 }
 
-function drawCat(g){
-  const { ctx, L, t } = g;
-  const x = L.figurines.x + 84, y = L.desk.top;
-  const breathe = Math.sin(t * 1.2) * 1.2;
-
-  ctx.fillStyle = '#3b3a44';
-  ctx.beginPath();
-  ctx.ellipse(x, y - 12 + breathe, 30, 12, 0, 0, 7);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x - 26, y - 20 + breathe, 11, 0, 7);
-  ctx.fill();
-  ctx.beginPath();                              // уши
-  ctx.moveTo(x - 34, y - 28 + breathe); ctx.lineTo(x - 30, y - 40 + breathe);
-  ctx.lineTo(x - 24, y - 29 + breathe); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(x - 24, y - 29 + breathe); ctx.lineTo(x - 18, y - 39 + breathe);
-  ctx.lineTo(x - 15, y - 27 + breathe); ctx.fill();
-  ctx.strokeStyle = '#3b3a44'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-  ctx.beginPath();                              // хвост
-  ctx.moveTo(x + 28, y - 12);
-  ctx.quadraticCurveTo(x + 46, y - 20 + Math.sin(t * 2) * 6, x + 40, y - 30);
-  ctx.stroke();
-  ctx.lineCap = 'butt';
-}
