@@ -18,6 +18,52 @@ const STRINGS = {
     'hud.boostOn':       'Разгон {v} с',
     'hud.boostWait':     'Остывает {v} с',
     'hud.clean':         'Почистить',
+    'hud.move':          'Переехать',
+
+    'order.clicks':      'Заказ: {n} {n|клик,клика,кликов}',
+    'order.heat':        'Заказ: {n} с в рабочей зоне',
+    'order.earn':        'Заказ: заработать {n} ₽',
+    'order.left':        '{v} с',
+    'order.done':        'Заказ сдан: +{v} ₽',
+    'order.failed':      'Заказ сорван. Следующий скоро придёт',
+
+    'move.title':        'Переезд',
+    'move.text':         'Железо придётся собирать заново. Взамен — {next} и {r} {r|единица,единицы,единиц} репутации навсегда, это +{p}% ко всему доходу.',
+    'move.confirm':      'Переехать',
+    'move.progress':     'До переезда {v}',
+    'move.last':         'Дальше переезжать некуда — это уже серверная',
+    'move.done':         'Переезд: {loc}, +{r} репутации',
+    'loc.0':             'Комната у родителей',
+    'loc.1':             'Съёмная квартира',
+    'loc.2':             'Студия',
+    'loc.3':             'Офис',
+    'loc.4':             'Серверная',
+
+    'offline.title':     'Пока тебя не было',
+    'offline.text':      'Сетап работал сам {h}. Накопитель сохранил {p}% дохода.',
+    'offline.take':      'Забрать {v} ₽',
+    'offline.double':    'Удвоить за ролик',
+    'offline.span':      '{h} ч {m} мин',
+
+    'ach.title':         'Достижения',
+    'ach.count':         '{n} из {total}',
+    'ach.new':           'Достижение: {v}',
+    'ach.firstBuy':      'Первая покупка',
+    'ach.allOnce':       'Собрано всё по разу',
+    'ach.maxOne':        'Что-то доведено до максимума',
+    'ach.maxAll':        'Всё на максимуме',
+    'ach.clicks1k':      'Тысяча кликов',
+    'ach.clicks10k':     'Десять тысяч кликов',
+    'ach.combo':         'Полная серия',
+    'ach.throttle':      'Довёл до перегрева',
+    'ach.spotless':      'Десять чисток корпуса',
+    'ach.orders10':      'Десять сданных заказов',
+    'ach.move':          'Первый переезд',
+    'ach.moveAll':       'Дошёл до серверной',
+
+    'cat.pet':           'Кот доволен: +{p}% к клику',
+    'cat.shoo':          'Кот согнан с клавиатуры',
+    'cat.keys':          'Кот спит на клавиатуре — автоклики стоят',
     'hud.cleanNone':     'Чисто',
     'hud.cleaning':      'Протри пыль: {v}',
 
@@ -47,6 +93,7 @@ const STRINGS = {
     'scene.screenMoney': '{v} ₽',
 
     'menu.stats':        'Статистика',
+    'menu.ach':          'Достижения',
     'menu.reset':        'Начать заново',
     'menu.resetTitle':   'Начать заново?',
     'menu.resetText':    'Всё железо и деньги пропадут. Отменить это будет нельзя.',
@@ -68,6 +115,10 @@ const STRINGS = {
     'stats.auto':        'Автокликов/сек',
     'stats.cooling':     'Охлаждение',
     'stats.offline':     'Оффлайн',
+    'stats.rep':         'Репутация',
+    'stats.loc':         'Локация',
+    'stats.orders':      'Заказов сдано',
+    'stats.total':       'Всего заработано',
     'stats.offlineVal':  '{p}% · до {h} ч',
     'stats.timeVal':     '{h} ч {m} мин',
 
@@ -131,6 +182,52 @@ const STRINGS = {
     'hud.boostOn':       'Boost {v}s',
     'hud.boostWait':     'Cooling {v}s',
     'hud.clean':         'Clean',
+    'hud.move':          'Move out',
+
+    'order.clicks':      'Order: {n} {n|click,clicks}',
+    'order.heat':        'Order: {n}s in the working zone',
+    'order.earn':        'Order: earn {n} ₽',
+    'order.left':        '{v}s',
+    'order.done':        'Order delivered: +{v} ₽',
+    'order.failed':      'Order lost. The next one is coming',
+
+    'move.title':        'Moving out',
+    'move.text':         'The hardware goes back to zero. In exchange: {next} and {r} {r|point,points} of reputation forever, which is +{p}% to all income.',
+    'move.confirm':      'Move out',
+    'move.progress':     '{v} to move out',
+    'move.last':         'Nowhere left to move — this is already the server room',
+    'move.done':         'Moved in: {loc}, +{r} reputation',
+    'loc.0':             'Room at your parents',
+    'loc.1':             'Rented flat',
+    'loc.2':             'Studio',
+    'loc.3':             'Office',
+    'loc.4':             'Server room',
+
+    'offline.title':     'While you were away',
+    'offline.text':      'The setup ran on its own for {h}. Storage kept {p}% of the income.',
+    'offline.take':      'Collect {v} ₽',
+    'offline.double':    'Double for an ad',
+    'offline.span':      '{h}h {m}m',
+
+    'ach.title':         'Achievements',
+    'ach.count':         '{n} of {total}',
+    'ach.new':           'Achievement: {v}',
+    'ach.firstBuy':      'First purchase',
+    'ach.allOnce':       'One of everything',
+    'ach.maxOne':        'Something maxed out',
+    'ach.maxAll':        'Everything maxed out',
+    'ach.clicks1k':      'A thousand clicks',
+    'ach.clicks10k':     'Ten thousand clicks',
+    'ach.combo':         'Full combo',
+    'ach.throttle':      'Pushed it to overheating',
+    'ach.spotless':      'Ten case cleanings',
+    'ach.orders10':      'Ten orders delivered',
+    'ach.move':          'First move',
+    'ach.moveAll':       'Reached the server room',
+
+    'cat.pet':           'The cat is pleased: +{p}% per click',
+    'cat.shoo':          'Cat shooed off the keyboard',
+    'cat.keys':          'Cat asleep on the keyboard — macros are paused',
     'hud.cleanNone':     'Clean',
     'hud.cleaning':      'Wipe the dust: {v}',
 
@@ -160,6 +257,7 @@ const STRINGS = {
     'scene.screenMoney': '{v} ₽',
 
     'menu.stats':        'Stats',
+    'menu.ach':          'Achievements',
     'menu.reset':        'Start over',
     'menu.resetTitle':   'Start over?',
     'menu.resetText':    'All hardware and money will be gone. This cannot be undone.',
@@ -181,6 +279,10 @@ const STRINGS = {
     'stats.auto':        'Auto clicks/sec',
     'stats.cooling':     'Cooling',
     'stats.offline':     'Offline',
+    'stats.rep':         'Reputation',
+    'stats.loc':         'Location',
+    'stats.orders':      'Orders delivered',
+    'stats.total':       'Earned all-time',
     'stats.offlineVal':  '{p}% · up to {h} h',
     'stats.timeVal':     '{h} h {m} min',
 
@@ -251,13 +353,31 @@ function raw(key){
   return (fb && key in fb) ? fb[key] : key;
 }
 
-/* t('shop.watts', {v: 15}) -> '+15 Вт' */
+/* Выбор формы слова по числу.
+   Две формы — английское правило, три — русское. Список форм задаётся
+   прямо в строке, поэтому правило определяется её же языком. */
+function plural(n, forms){
+  if(forms.length < 2) return forms[0] || '';
+  if(forms.length === 2) return Math.abs(n) === 1 ? forms[0] : forms[1];
+  const a = Math.abs(Math.floor(n)) % 100, b = a % 10;
+  if(a > 10 && a < 20) return forms[2];
+  if(b > 1 && b < 5) return forms[1];
+  if(b === 1) return forms[0];
+  return forms[2];
+}
+
+/* t('shop.watts', {v: 15})                  -> '+15 Вт'
+   t('order.clicks', {n: 34}) со строкой
+   'Заказ: {n} {n|клик,клика,кликов}'        -> 'Заказ: 34 клика' */
 export function t(key, params){
   const s = raw(key);
   if(typeof s !== 'string') return key;
   if(!params) return s;
-  return s.replace(/\{(\w+)\}/g, (m, name) =>
-    (name in params ? String(params[name]) : m));
+  return s.replace(/\{(\w+)(?:\|([^}]*))?\}/g, (m, name, forms) => {
+    if(!(name in params)) return m;
+    if(forms === undefined) return String(params[name]);
+    return plural(Number(params[name]), forms.split(','));
+  });
 }
 
 /* Название уровня категории. */

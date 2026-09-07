@@ -15,6 +15,70 @@ export function drawDeskDecor(g){
   g.withPop('decor', L.figurines.x, L.figurines.y, () => drawFigurines(g));
 }
 
+/* Кот рисуется после клавиатуры: сидя на ней, он должен её закрывать. */
+export function drawCat(g, pos){
+  const { ctx, state, t } = g;
+  const c = state.cat;
+  if(!c || !pos) return;
+
+  const onKeys = c.mode === 'keyboard';
+  const walking = c.mode === 'walk';
+  const breathe = Math.sin(t * 1.6) * 1.3;
+  const step = walking ? Math.sin(t * 7) * 2.5 : 0;
+  const x = pos.x, y = pos.y + (onKeys ? -6 : 0);
+  const face = c.dir;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(x, y + 4, 30, 7, 0, 0, 7); ctx.fill();
+
+  const petting = c.petLeft > 0;
+  ctx.fillStyle = petting ? '#4a4654' : '#3b3a44';
+
+  if(onKeys){                                   // разлёгся поперёк клавиш
+    ctx.beginPath(); ctx.ellipse(x, y - 10 + breathe, 36, 12, 0, 0, 7); ctx.fill();
+  }else{
+    ctx.beginPath();
+    ctx.ellipse(x, y - 14 + breathe, 26, walking ? 12 : 14, 0, 0, 7);
+    ctx.fill();
+    for(const off of [-14, 10]){                // лапы
+      ctx.fillRect(x + off, y - 6, 6, 8 + (walking ? step * (off < 0 ? 1 : -1) : 0));
+    }
+  }
+
+  const hx = x - face * 26, hy = y - (onKeys ? 18 : 26) + breathe;
+  ctx.beginPath(); ctx.arc(hx, hy, 12, 0, 7); ctx.fill();
+  ctx.beginPath();                              // уши
+  ctx.moveTo(hx - 9, hy - 7); ctx.lineTo(hx - 5, hy - 20); ctx.lineTo(hx + 2, hy - 8); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(hx + 2, hy - 8); ctx.lineTo(hx + 9, hy - 19); ctx.lineTo(hx + 11, hy - 5); ctx.fill();
+
+  if(!onKeys){                                  // глаза, когда не спит
+    ctx.fillStyle = '#ffd76a';
+    ctx.beginPath(); ctx.arc(hx - face * 4, hy - 1, 2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx - face * 10, hy - 1, 2, 0, 7); ctx.fill();
+  }
+
+  ctx.strokeStyle = petting ? '#4a4654' : '#3b3a44';
+  ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath();                              // хвост
+  ctx.moveTo(x + face * 24, y - 12);
+  ctx.quadraticCurveTo(x + face * 44, y - 22 + Math.sin(t * 2.4) * 8, x + face * 36, y - 34);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.restore();
+
+  if(onKeys){                                   // «зззз»
+    ctx.globalAlpha = 0.55 + Math.sin(t * 3) * 0.25;
+    ctx.fillStyle = '#e8ecf5';
+    ctx.font = '600 15px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('z z', x + face * -30, y - 40 + Math.sin(t * 1.5) * 3);
+    ctx.globalAlpha = 1;
+  }
+  if(petting) g.glow(x, y - 20, 90, 'rgba(255,190,120,.5)', 0.45);
+}
+
 /* ---- клавиатура ------------------------------------------------------ */
 function drawKeyboard(g){
   const { ctx, L, t } = g;
@@ -46,8 +110,9 @@ function drawKeyboard(g){
     ctx.fillStyle = '#242833';
     g.rr(x + 10, y + h + 3, w - 20, 8, 4); ctx.fill();
   }
-  /* макросы работают — бегущий огонёк по ряду */
-  if(lvl >= 1){
+  /* макросы работают — бегущий огонёк по ряду; под котом они стоят */
+  const catOnKeys = g.state.cat && g.state.cat.mode === 'keyboard';
+  if(lvl >= 1 && !catOnKeys){
     const i = Math.floor(t * 8) % cols;
     ctx.fillStyle = '#ffd76a';
     ctx.fillRect(x + 7 + i * kw, y + h - 8, kw - 2.5, 4);

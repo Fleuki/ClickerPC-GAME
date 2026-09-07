@@ -72,6 +72,18 @@ button{font:inherit;color:inherit}
 .acts button:disabled{opacity:.4}
 .acts button.on{background:var(--hot);color:#241300;border-color:var(--hot)}
 .acts button.alert{border-color:#6b5a3d;color:var(--coin)}
+.acts button.move{border-color:#5a3d6b;color:#d9a6ff;flex:0 0 auto;padding:9px 12px}
+
+.order{margin-top:8px;background:var(--panel-2);border:1px solid #3d5a6b;border-radius:9px;
+  padding:6px 9px 7px;display:none}
+.order.show{display:block}
+.order .otop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.order .otop b{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order .otop i{font-style:normal;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.order .obar{position:relative;height:5px;border-radius:3px;background:#11141b;margin-top:5px;overflow:hidden}
+.order .obar s{position:absolute;inset:0 auto 0 0;width:0;background:var(--cold);text-decoration:none}
+.order.urgent{border-color:#6b4a3d}
+.order.urgent .otop i{color:var(--hot)}
 
 .note{margin-top:8px;font-size:12.5px;color:var(--hot);background:rgba(255,159,61,.09);
   border-radius:8px;padding:5px 8px;display:none}
@@ -123,6 +135,16 @@ button{font:inherit;color:inherit}
   padding:5px 3px;font-size:11.5px}
 
 /* ---- modal ---- */
+.toasts{position:fixed;left:0;right:0;top:8px;display:flex;flex-direction:column;
+  align-items:center;gap:6px;pointer-events:none;z-index:15;padding:0 12px}
+.toast{background:rgba(18,21,28,.94);border:1px solid var(--line);border-radius:10px;
+  padding:7px 12px;font-size:13px;font-weight:600;max-width:100%;
+  box-shadow:0 4px 18px rgba(0,0,0,.45);animation:toastIn .18s ease-out}
+.toast.good{border-color:#3d6b52;color:var(--warm)}
+.toast.bad{border-color:#6b3d3d;color:var(--burn)}
+.toast.gold{border-color:#6b5a3d;color:var(--coin)}
+@keyframes toastIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
 .scrim{position:fixed;inset:0;background:rgba(6,7,11,.72);display:flex;
   align-items:center;justify-content:center;padding:18px;z-index:20}
 .modal{width:100%;max-width:340px;background:var(--panel);border:1px solid var(--line);

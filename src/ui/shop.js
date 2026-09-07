@@ -91,9 +91,11 @@ export function init(tabsRoot, shopRoot, h){
   const foot = make('div', 'foot', shopRoot);
   const stats = make('button', null, foot);
   stats.addEventListener('click', () => handlers.onStats && handlers.onStats());
+  const ach = make('button', null, foot);
+  ach.addEventListener('click', () => handlers.onAchievements && handlers.onAchievements());
   const reset = make('button', null, foot);
   reset.addEventListener('click', () => handlers.onReset && handlers.onReset());
-  footEls = { stats, reset };
+  footEls = { stats, ach, reset };
 
   applyLabels();
   render();
@@ -104,6 +106,7 @@ export function applyLabels(){
   for(const tab of TABS) tabButtons.get(tab).label.textContent = t('tab.' + tab);
   if(footEls){
     footEls.stats.textContent = t('menu.stats');
+    footEls.ach.textContent = t('menu.ach');
     footEls.reset.textContent = t('menu.reset');
   }
 }

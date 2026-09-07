@@ -4,8 +4,25 @@
 import { HEAT, DUST } from '../../config.js';
 import { clamp } from '../../economy.js';
 
-const WALL  = ['#23252e', '#242733', '#232839', '#1e2740'];
-const FLOOR = ['#0f1014', '#111219', '#12141d', '#131725'];
+/* Пять локаций (§6): комната у родителей -> съёмная квартира -> студия ->
+   офис -> серверная. У каждой своя палитра стен и пола, внутри локации
+   оттенок ещё зависит от того, насколько обжита комната. */
+const PALETTE = [
+  { wall:  ['#23252e', '#242733', '#232839', '#1e2740'],
+    floor: ['#0f1014', '#111219', '#12141d', '#131725'] },
+  { wall:  ['#2b2620', '#322b23', '#3a3128', '#42372b'],
+    floor: ['#15110d', '#191410', '#1d1712', '#211a14'] },
+  { wall:  ['#241f30', '#2a2239', '#332745', '#3d2c52'],
+    floor: ['#120f19', '#16121f', '#1a1526', '#1f182d'] },
+  { wall:  ['#1f2a2c', '#233134', '#28393c', '#2d4145'],
+    floor: ['#0d1314', '#101819', '#131d1f', '#162224'] },
+  { wall:  ['#16211f', '#182825', '#1a2f2b', '#1c3631'],
+    floor: ['#0a100f', '#0c1413', '#0e1817', '#101c1b'] }
+];
+
+function palette(g){
+  return PALETTE[Math.max(0, Math.min(PALETTE.length - 1, g.state.location || 0))];
+}
 
 /* Общий «класс» комнаты: по лучшей из комнатных категорий. */
 function roomTier(g){
@@ -17,13 +34,14 @@ export function drawBack(g){
   const R = roomTier(g);
 
   /* стена и пол тянутся за границы сцены — на любом экране нет пустых полей */
+  const pal = palette(g);
   const grad = ctx.createLinearGradient(0, view.y0, 0, L.floorY);
-  grad.addColorStop(0, WALL[R]);
-  grad.addColorStop(1, '#15161d');
+  grad.addColorStop(0, pal.wall[R]);
+  grad.addColorStop(1, pal.floor[3]);
   ctx.fillStyle = grad;
   ctx.fillRect(view.x0, view.y0, view.x1 - view.x0, L.floorY - view.y0);
 
-  ctx.fillStyle = FLOOR[R];
+  ctx.fillStyle = pal.floor[R];
   ctx.fillRect(view.x0, L.floorY, view.x1 - view.x0, view.y1 - L.floorY);
   ctx.fillStyle = 'rgba(255,255,255,.05)';
   ctx.fillRect(view.x0, L.floorY, view.x1 - view.x0, 2);
@@ -199,9 +217,6 @@ export function drawFront(g){
   const { ctx, L, view } = g;
   drawPlant(g);
   g.withPop('furniture', L.chair.cx, L.floorY, () => drawChair(g));
-  /* Кот появляется с 3 уровня декора (§5) и спит на спинке кресла.
-     В фазе 1 это только украшение; механика кота — фаза 3. */
-  if(g.lvl('decor') >= 3) drawCat(g);
 
   /* виньетка */
   const cx = (view.x0 + view.x1) / 2, cy = (view.y0 + view.y1) / 2;
@@ -236,28 +251,6 @@ function drawChair(g){
     ctx.fillStyle = 'rgba(255,255,255,.07)';
     g.rr(cx - 52, top - 20, 104, 22, 10); ctx.fill();
   }
-}
-
-function drawCat(g){
-  const { ctx, L, t } = g;
-  const x = L.chair.cx + 74, y = L.chair.top + 6;
-  const breathe = Math.sin(t * 1.2) * 1.2;
-
-  ctx.fillStyle = '#3b3a44';
-  ctx.beginPath(); ctx.ellipse(x, y - 14 + breathe, 34, 14, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(x - 30, y - 24 + breathe, 13, 0, 7); ctx.fill();
-  ctx.beginPath();                              // уши
-  ctx.moveTo(x - 40, y - 33 + breathe); ctx.lineTo(x - 35, y - 48 + breathe);
-  ctx.lineTo(x - 27, y - 34 + breathe); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(x - 27, y - 34 + breathe); ctx.lineTo(x - 19, y - 46 + breathe);
-  ctx.lineTo(x - 16, y - 31 + breathe); ctx.fill();
-  ctx.strokeStyle = '#3b3a44'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath();                              // хвост
-  ctx.moveTo(x + 32, y - 14);
-  ctx.quadraticCurveTo(x + 54, y - 24 + Math.sin(t * 2) * 7, x + 46, y - 36);
-  ctx.stroke();
-  ctx.lineCap = 'butt';
 }
 
 function drawPlant(g){

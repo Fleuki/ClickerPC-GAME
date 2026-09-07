@@ -29,6 +29,31 @@ export const sdk = {
     return LOCALES.includes(code) ? code : FALLBACK_LOCALE;
   },
 
+  /* Реклама. Вне платформы — заглушки: rewarded считается просмотренным,
+     межстраничная не показывается. В фазе 4 внутренности заменятся
+     на вызовы Yandex SDK, игровая логика не изменится. */
+  async rewarded(){
+    if(native && native.adv) return new Promise(resolve => {
+      let ok = false;
+      native.adv.showRewardedVideo({ callbacks: {
+        onRewarded: () => { ok = true; },
+        onClose: () => resolve(ok),
+        onError: () => resolve(false)
+      }});
+    });
+    return true;
+  },
+
+  async interstitial(){
+    if(native && native.adv) return new Promise(resolve => {
+      native.adv.showFullscreenAdv({ callbacks: {
+        onClose: was => resolve(!!was),
+        onError: () => resolve(false)
+      }});
+    });
+    return false;
+  },
+
   /* Хранилище. Асинхронное намеренно: облачный сейв Яндекса тоже асинхронный. */
   storage:{
     async load(key){

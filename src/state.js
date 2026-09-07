@@ -2,7 +2,7 @@
    Состояние игры, сериализация и миграции сейвов.
 ===================================================================== */
 
-import { CATEGORIES, MAX_LEVEL, SAVE, HEAT, DUST } from './config.js';
+import { CATEGORIES, MAX_LEVEL, SAVE, HEAT, DUST, ORDERS, PRESTIGE, CAT } from './config.js';
 import { clamp } from './economy.js';
 
 export function createState(){
@@ -19,7 +19,17 @@ export function createState(){
     combo: 0,
     comboTimer: 0,
     boost: { left: 0, cooldown: 0 },
-    reputation: 0,          // фаза 3
+    reputation: 0,
+    location: 0,            // комната у родителей ... серверная
+    moves: 0,               // сколько раз переезжал
+    totalEarned: 0,         // за всё время, не сбрасывается переездом
+    order: null,
+    orderTimer: ORDERS.firstDelay,   // дать освоиться до первого клиента
+    ordersDone: 0,
+    cleans: 0,
+    lastReward: 0,
+    achievements: [],
+    cat: null,
     playTime: 0,
     seenIntro: false,
     muted: false,
@@ -45,6 +55,15 @@ export function serialize(state){
     comboTimer: state.comboTimer,
     boost: { left: state.boost.left, cooldown: state.boost.cooldown },
     reputation: state.reputation,
+    location: state.location,
+    moves: state.moves,
+    totalEarned: state.totalEarned,
+    order: state.order,
+    orderTimer: state.orderTimer,
+    ordersDone: state.ordersDone,
+    cleans: state.cleans,
+    achievements: state.achievements.slice(),
+    cat: state.cat,
     playTime: state.playTime,
     seenIntro: state.seenIntro,
     muted: state.muted,
@@ -130,6 +149,16 @@ export function load(state, raw){
   state.boost.cooldown = num(b.cooldown, 0, 0, HEAT.boost.cooldown);
 
   state.reputation = num(d.reputation, 0, 0, Number.MAX_SAFE_INTEGER);
+  state.location   = Math.floor(num(d.location, 0, 0, PRESTIGE.locations - 1));
+  state.moves      = Math.floor(num(d.moves, 0, 0, Number.MAX_SAFE_INTEGER));
+  state.totalEarned= num(d.totalEarned, state.earned, 0, Number.MAX_SAFE_INTEGER);
+  state.ordersDone = Math.floor(num(d.ordersDone, 0, 0, Number.MAX_SAFE_INTEGER));
+  state.cleans     = Math.floor(num(d.cleans, 0, 0, Number.MAX_SAFE_INTEGER));
+  state.orderTimer = num(d.orderTimer, ORDERS.firstDelay, 0, Number.MAX_SAFE_INTEGER);
+  state.order      = sanitizeOrder(d.order);
+  state.cat        = sanitizeCat(d.cat);
+  state.achievements = Array.isArray(d.achievements)
+    ? d.achievements.filter(a => typeof a === 'string').slice(0, 64) : [];
   state.playTime   = num(d.playTime, 0, 0, Number.MAX_SAFE_INTEGER);
   state.seenIntro  = !!d.seenIntro;
   state.muted      = !!d.muted;
@@ -138,6 +167,43 @@ export function load(state, raw){
   state.cleaning = null;
   state.autoAcc = 0;
   return true;
+}
+
+/* Заказ и кот приходят из сейва как есть, поэтому проверяем поля:
+   битый объект не должен ломать цикл. */
+function sanitizeOrder(o){
+  if(!o || typeof o !== 'object') return null;
+  const kind = o.kind;
+  if(kind !== 'clicks' && kind !== 'heat' && kind !== 'earn') return null;
+  const n = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def);
+  const window = n(o.window, ORDERS.clicks.window);
+  const left = clamp(n(o.left, window), 0, window);
+  if(left <= 0) return null;
+  return {
+    kind,
+    goal: Math.max(1, n(o.goal, 1)),
+    progress: Math.max(0, n(o.progress, 0)),
+    window, left,
+    startEarned: Math.max(0, n(o.startEarned, 0))
+  };
+}
+
+function sanitizeCat(c){
+  if(!c || typeof c !== 'object') return null;
+  const n = (v, def, lo, hi) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? clamp(x, lo, hi) : def;
+  };
+  const mode = ['walk', 'rest', 'keyboard'].includes(c.mode) ? c.mode : 'walk';
+  return {
+    x: n(c.x, 0.5, 0, 1),
+    dir: c.dir < 0 ? -1 : 1,
+    mode,
+    timer: n(c.timer, 1, 0, CAT.walkMax),
+    blockLeft: n(c.blockLeft, 0, 0, CAT.keyboardBlock),
+    petLeft: n(c.petLeft, 0, 0, CAT.petDuration),
+    petCd: n(c.petCd, 0, 0, CAT.petCooldown)
+  };
 }
 
 export function reset(state){

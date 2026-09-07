@@ -4,7 +4,7 @@
 ===================================================================== */
 
 import {
-  CATEGORIES, MAX_LEVEL, ECONOMY, HEAT, DUST, COMBO, DAYNIGHT
+  CATEGORIES, MAX_LEVEL, ECONOMY, HEAT, DUST, COMBO, DAYNIGHT, PRESTIGE, CAT
 } from './config.js';
 
 const BY_ID = new Map(CATEGORIES.map(c => [c.id, c]));
@@ -97,12 +97,14 @@ export function purchaseCheck(state, id){
 }
 
 /* ---- множители ------------------------------------------------------ */
-export function globalMult(levels, reputation = 0){
+export function globalMult(levels, reputation = 0, location = 0){
   let m = 1;
   for(const c of CATEGORIES){
     if(c.effects.globalMult) m *= value(levels, c.id, 'globalMult');
   }
-  return m * (1 + ECONOMY.repBonus * reputation);
+  /* репутация — навсегда, множитель локации — за каждый переезд (§6) */
+  return m * (1 + ECONOMY.repBonus * reputation)
+           * Math.pow(PRESTIGE.locationMult, Math.max(0, location));
 }
 
 export function heatMult(heat, throttling){
@@ -148,10 +150,17 @@ export function dayCoolMult(state){
 /* ---- доход ---------------------------------------------------------- */
 
 /* Цена одного ручного клика без крита. */
+/* Множитель от «погладить кота» (§6). Живёт здесь, а не в systems/cat.js,
+   чтобы весь доход считался в одном месте. */
+export function catMult(state){
+  return state.cat && state.cat.petLeft > 0 ? 1 + CAT.petBonus : 1;
+}
+
 export function clickValue(state){
   return value(state.levels, 'cpu', 'clickBase')
        * value(state.levels, 'mouse', 'clickMult')
-       * globalMult(state.levels, state.reputation)
+       * globalMult(state.levels, state.reputation, state.location)
+       * catMult(state)
        * heatMult(state.heat, state.throttling)
        * comboMult(state.combo)
        * boostMult(state)
@@ -172,7 +181,7 @@ export function autoCps(state){
 /* Пассивный доход видеокарты, ₽/сек. */
 export function passiveIncome(state){
   return value(state.levels, 'gpu', 'income')
-       * globalMult(state.levels, state.reputation)
+       * globalMult(state.levels, state.reputation, state.location)
        * heatMult(state.heat, state.throttling)
        * boostMult(state)
        * dayIncomeMult(state)

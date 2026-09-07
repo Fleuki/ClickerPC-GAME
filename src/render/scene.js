@@ -124,6 +124,14 @@ export function anchor(id){
 /* Подстройка качества под реальное время кадра (см. lighting.js). */
 export function tuneQuality(frameMs){ Lighting.tune(frameMs); }
 
+/* Где сейчас кот в координатах сцены. Система хранит долю ширины стола,
+   перевод в пиксели — дело рендера. */
+export function catPos(state){
+  if(!state.cat) return null;
+  const d = LAYOUT.desk;
+  return { x: d.x0 + state.cat.x * (d.x1 - d.x0), y: d.top - 16, r: 46 };
+}
+
 /* Прямоугольник корпуса — нужен вводу для попаданий по пыли. */
 export function towerRect(){ return LAYOUT.tower; }
 
@@ -168,6 +176,7 @@ export function draw(state, time, dt){
   Monitor.draw(g);             // мониторы
   Tower.draw(g);               // системник и всё, что внутри
   Peripherals.draw(g);         // клавиатура, мышь, наушники, лампа
+  Peripherals.drawCat(g, catPos(state));   // кот ходит по столу (§6)
   Desk.drawFront(g);           // переднее ребро стола и ножки — поверх периферии
   Lighting.drawMonitorLight(g);// свет от монитора на стол и стену
   Room.drawHeat(g);            // волны жара и всполохи перегрева

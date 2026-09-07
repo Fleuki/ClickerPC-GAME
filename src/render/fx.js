@@ -97,6 +97,24 @@ export function dustPuff(x, y){
   }
 }
 
+/* Конфетти при переезде (§7). */
+export function confetti(x, y){
+  for(let i = 0; i < 40 && parts.length < MAX_PARTS + 40; i++){
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+    const v = 160 + Math.random() * 220;
+    parts.push({
+      kind: 'confetti', x, y,
+      vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+      hue: Math.floor(Math.random() * 360),
+      spin: (Math.random() - 0.5) * 12,
+      rot: Math.random() * 6,
+      life: 1.6
+    });
+  }
+  flash = 1;
+  shake(9);
+}
+
 export function shake(amount){ shakeAmount = Math.max(shakeAmount, amount); }
 export function purchaseFlash(){ flash = 1; shake(7); }
 
@@ -133,8 +151,11 @@ export function update(dt){
     const p = parts[i];
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    p.vy += (p.kind === 'text' ? 48 : p.kind === 'coin' ? 260 : 180) * dt;
-    p.life -= dt * (p.kind === 'text' ? 1.1 : p.kind === 'coin' ? 1.2 : 1.6);
+    p.vy += (p.kind === 'text' ? 48 : p.kind === 'coin' ? 260 :
+             p.kind === 'confetti' ? 300 : 180) * dt;
+    if(p.kind === 'confetti'){ p.rot += p.spin * dt; p.vx *= 0.985; }
+    p.life -= dt * (p.kind === 'text' ? 1.1 : p.kind === 'coin' ? 1.2 :
+                    p.kind === 'confetti' ? 0.55 : 1.6);
     if(p.life <= 0) parts.splice(i, 1);
   }
 }
@@ -156,6 +177,13 @@ export function draw(g){
       ctx.fillStyle = p.crit ? '#ff7ad4' : '#ffd76a';
       ctx.font = (p.crit ? 'bold 27px ' : '600 19px ') + 'system-ui,sans-serif';
       ctx.fillText(p.txt, p.x, p.y);
+    }else if(p.kind === 'confetti'){
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = `hsl(${p.hue} 85% 62%)`;
+      ctx.fillRect(-4, -6, 8, 12);
+      ctx.restore();
     }else if(p.kind === 'coin'){
       ctx.fillStyle = '#ffd76a';
       ctx.beginPath();

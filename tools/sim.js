@@ -164,7 +164,8 @@ function report(log){
   console.log(`  заработано за прогон ${Math.round(s.earned).toLocaleString('ru-RU')} ₽`);
   console.log(`  под троттлингом     ${(log.throttleTime / 60).toFixed(1)} мин ` +
               `(${(log.throttleTime / (MINUTES * 60) * 100).toFixed(0)}% времени)`);
-  console.log(`  чисток корпуса ${log.cleans} · разгонов ${log.boosts}`);
+  console.log(`  чисток корпуса ${log.cleans} · разгонов ${log.boosts} · ` +
+              `заказов сдано ${s.ordersDone}`);
   console.log(`  ватты в финале      ${Math.round(Economy.totalWatts(s.levels))} / ` +
               `${Math.round(Economy.wattLimit(s.levels))}`);
 

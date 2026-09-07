@@ -1,11 +1,14 @@
 /* HUD: баланс, доход, температура, ватты, пыль, «Разгон», чистка.
    Весь текст — через текстовые узлы, innerHTML не используется. */
 
-import { HEAT, DUST, UI, MAX_LEVEL } from '../config.js';
+import { HEAT, DUST, UI, MAX_LEVEL, ORDERS } from '../config.js';
 import { t, fmt, fmtMult, pct } from '../i18n.js';
 import * as Economy from '../economy.js';
 import * as HeatSys from '../systems/heat.js';
 import * as DustSys from '../systems/dust.js';
+import * as OrdersSys from '../systems/orders.js';
+import * as PrestigeSys from '../systems/prestige.js';
+import * as CatSys from '../systems/cat.js';
 
 const el = {};
 let handlers = {};
@@ -67,6 +70,15 @@ export function init(root, h){
   el.boost.addEventListener('click', () => handlers.onBoost && handlers.onBoost());
   el.clean = make('button', null, acts);
   el.clean.addEventListener('click', () => handlers.onClean && handlers.onClean());
+  el.move = make('button', 'move', acts);
+  el.move.addEventListener('click', () => handlers.onMove && handlers.onMove());
+
+  /* заказ клиента (§6) */
+  el.order = make('div', 'order', root);
+  const otop = make('div', 'otop', el.order);
+  el.orderText = make('b', null, otop);
+  el.orderLeft = make('i', null, otop);
+  el.orderBar = make('s', null, make('div', 'obar', el.order));
 
   el.note = make('div', 'note', root);
   applyLabels();
@@ -122,12 +134,33 @@ export function update(state){
     el.clean.classList.toggle('alert', state.dust > UI.dustWarn);
   }
 
+  /* переезд: кнопка появляется только когда он доступен */
+  const canMove = PrestigeSys.available(state);
+  el.move.hidden = !canMove;
+  if(canMove) el.move.textContent = t('hud.move');
+
+  updateOrder(state);
   updateNote(state, used, limit);
+}
+
+function updateOrder(state){
+  const o = state.order;
+  el.order.classList.toggle('show', !!o);
+  if(!o) return;
+  const left = Math.max(0, Math.ceil(o.left));
+  el.orderText.textContent = o.kind === 'earn'
+    ? t('order.earn', { n: fmt(o.goal) })
+    : t('order.' + o.kind, { n: Math.round(o.goal) });
+  el.orderLeft.textContent = t('order.left', { v: left });
+  el.orderBar.style.width = (OrdersSys.share(o) * 100) + '%';
+  el.order.classList.toggle('urgent', left <= 5);
 }
 
 function updateNote(state, used, limit){
   let msg = '', bad = false;
-  if(state.throttling){
+  if(CatSys.blocksAuto(state)){
+    msg = t('cat.keys');
+  }else if(state.throttling){
     msg = t('note.throttle', { v: fmtMult(HEAT.throttleIncome), out: HEAT.throttleOut });
     bad = true;
   }else if(state.dust > UI.dustWarn){
