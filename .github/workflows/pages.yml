@@ -47,14 +47,20 @@ jobs:
       - name: Собрать архив для площадки и самопроверки
         run: node tools/build.js
 
+      # Ровно то же, что кладёт в архив tools/build.js, плюс .nojekyll
+      # и прототип фазы 0 рядом — чтобы было с чем сравнить.
       - name: Собрать статику
         run: |
           mkdir -p _site
-          cp index.html _site/
-          cp .nojekyll _site/
+          cp index.html .nojekyll _site/
           cp -r src _site/
-          # прототип фазы 0 — рядом, чтобы можно было сравнить
+          # assets/ появляется вместе со звуками; README оттуда игроку не нужен
+          if [ -d assets ]; then
+            cp -r assets _site/
+            find _site/assets -name '*.md' -delete
+          fi
           cp setup-clicker-prototype.html _site/
+          find _site -type f | sort
           du -sh _site
 
       - uses: actions/configure-pages@v5
