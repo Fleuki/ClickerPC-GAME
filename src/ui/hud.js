@@ -69,7 +69,10 @@ export function init(root, h){
   el.boost = make('button', null, acts);
   el.boost.addEventListener('click', () => handlers.onBoost && handlers.onBoost());
   el.clean = make('button', null, acts);
-  el.clean.addEventListener('click', () => handlers.onClean && handlers.onClean());
+  el.clean.addEventListener('click', () => {
+    if(el.cleanMode === 'ad') handlers.onCleanAd && handlers.onCleanAd();
+    else handlers.onClean && handlers.onClean();
+  });
   el.move = make('button', 'move', acts);
   el.move.addEventListener('click', () => handlers.onMove && handlers.onMove());
 
@@ -124,15 +127,20 @@ export function update(state){
 
   /* чистка */
   if(state.cleaning){
-    el.clean.textContent = t('hud.cleaning', { v: state.cleaning.left });
-    el.clean.disabled = true;
+    /* Во время чистки кнопка предлагает пропустить мини-действие за ролик
+       (§4.4). Тапать шесть раз необязательно, но это выбор игрока. */
+    el.clean.textContent = t('hud.cleanAd');
+    el.clean.disabled = false;
     el.clean.classList.add('alert');
+    el.cleanMode = 'ad';
   }else{
+    el.cleanMode = 'start';
     const can = DustSys.canClean(state);
     el.clean.textContent = can ? t('hud.clean') : t('hud.cleanNone');
     el.clean.disabled = !can;
     el.clean.classList.toggle('alert', state.dust > UI.dustWarn);
   }
+  el.orderHint = state.cleaning ? t('hud.cleaning', { v: state.cleaning.left }) : '';
 
   /* переезд: кнопка появляется только когда он доступен */
   const canMove = PrestigeSys.available(state);
@@ -158,7 +166,9 @@ function updateOrder(state){
 
 function updateNote(state, used, limit){
   let msg = '', bad = false;
-  if(CatSys.blocksAuto(state)){
+  if(state.cleaning){
+    msg = t('hud.cleaning', { v: state.cleaning.left });
+  }else if(CatSys.blocksAuto(state)){
     msg = t('cat.keys');
   }else if(state.throttling){
     msg = t('note.throttle', { v: fmtMult(HEAT.throttleIncome), out: HEAT.throttleOut });

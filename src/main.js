@@ -134,6 +134,18 @@ async function boot(){
   Hud.init(document.getElementById('hud'), {
     onBoost: () => { if(HeatSys.startBoost(state)){ FX.shake(4); Sound.play('reward'); } },
     onClean: () => { if(DustSys.start(state)) Sound.play('clean'); },
+    /* Мгновенная чистка за ролик (§4.4) — реклама, которую игрок просит сам. */
+    onCleanAd: async () => {
+      const watched = await sdk.rewarded();
+      if(!watched){ Modals.toast(t('hud.adFailed'), 'bad'); return; }
+      DustSys.cancel(state);
+      state.dust = 0;
+      state.cleans += 1;
+      Sound.play('clean');
+      FX.dustPuff(Scene.towerRect().x + Scene.towerRect().w / 2,
+                  Scene.towerRect().y + Scene.towerRect().h / 2);
+      save();
+    },
     onMove: () => Modals.prestige(state, () => {
       const gain = PrestigeSys.move(state);
       if(!gain) return;
@@ -143,6 +155,9 @@ async function boot(){
       Modals.toast(t('move.done', { loc: t('loc.' + state.location), r: gain }), 'gold');
       Shop.update(state);
       save();
+      /* Переезд — естественная пауза, тут и место межстраничной.
+         Частоту и задержку от старта сессии проверяет сам sdk. */
+      sdk.interstitial();
     })
   });
 
@@ -258,7 +273,8 @@ async function boot(){
     lighting: await import('./render/lighting.js'),
     config: await import('./config.js'),
     sound: Sound,
-    perfReset(){ drawTimes.length = 0; }
+    perfReset(){ drawTimes.length = 0; },
+    sdk
   };
 
   /* ---- ввод ---- */
@@ -361,7 +377,10 @@ async function boot(){
 
   function bindPersistence(){
     setInterval(save, SAVE.autosaveInterval * 1000);
-    document.addEventListener('visibilitychange', () => { if(document.hidden) save(); });
+    document.addEventListener('visibilitychange', () => {
+      sdk.gameplay(!document.hidden);   // платформа хочет знать, идёт ли игра
+      if(document.hidden) save();
+    });
     window.addEventListener('pagehide', save);
     window.addEventListener('beforeunload', save);
   }

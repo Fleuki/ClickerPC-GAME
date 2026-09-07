@@ -165,6 +165,34 @@ export const COMBO = {
   maxCombo: 50                // потолок серии -> множитель x2.5
 };
 
+/* ---- площадка (§11, фаза 4) -----------------------------------------
+   target: 'auto' — определяем по адресу страницы; можно принудительно
+   поставить 'yandex', 'playgama' или 'none' (всегда заглушка).
+--------------------------------------------------------------------- */
+export const PLATFORM = {
+  target: 'auto',
+  sdkTimeout: 10000,          // сколько ждём загрузки скрипта площадки, мс
+  yandex: {
+    /* адрес проверен: отдаёт `var YaGames`, в нём есть LoadingAPI,
+       GameplayAPI, showFullscreenAdv, showRewardedVideo, getPlayer */
+    sdk: 'https://yandex.ru/games/sdk/v2',
+    hosts: ['yandex.net', 'yandex.ru', 'yandex.com'],
+    dataKey: 'setup'
+  },
+  playgama: {
+    /* ВНИМАНИЕ: адрес не проверен — из этого окружения bridge.playgama.com
+       отдаёт 403. Перед публикацией на Playgama сверить с их документацией.
+       Если скрипт не загрузится, игра просто останется на заглушке. */
+    sdk: 'https://bridge.playgama.com/bridge.js',
+    hosts: ['playgama.com', 'playgama.io'],
+    dataKey: 'setup'
+  },
+  ads: {
+    firstDelay: 30,           // не показывать рекламу первые 30 секунд сессии
+    minGap: 60                // и не чаще раза в 60 секунд
+  }
+};
+
 /* ---- сохранение ---------------------------------------------------- */
 export const SAVE = {
   key: 'setup.save',

@@ -66,6 +66,8 @@ const STRINGS = {
     'cat.keys':          'Кот спит на клавиатуре — автоклики стоят',
     'hud.cleanNone':     'Чисто',
     'hud.cleaning':      'Протри пыль: {v}',
+    'hud.cleanAd':       'Сразу за ролик',
+    'hud.adFailed':      'Ролик не показался. Попробуй ещё раз',
 
     'note.throttle':     'Перегрев: доход ×{v}, автоклики стоят. Дай остыть ниже {out}°.',
     'note.warm':         'Рабочая зона: доход ×{v}. Держи темп.',
@@ -230,6 +232,8 @@ const STRINGS = {
     'cat.keys':          'Cat asleep on the keyboard — macros are paused',
     'hud.cleanNone':     'Clean',
     'hud.cleaning':      'Wipe the dust: {v}',
+    'hud.cleanAd':       'Skip with an ad',
+    'hud.adFailed':      'The ad did not play. Try again',
 
     'note.throttle':     'Overheated: income ×{v}, macros paused. Cool below {out}°.',
     'note.warm':         'Working zone: income ×{v}. Keep the pace.',
